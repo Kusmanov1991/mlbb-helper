@@ -62,6 +62,12 @@ function phaseBox(v,label,time){
   return `<div class="${cls}"><b>${label}</b>${time}<br>${txt}</div>`;
 }
 
+function muBlock(mu,pid,ru){
+  if(!mu) return "";
+  const row=(k,t)=>t?`<li><b>${k}.</b> ${esc(t)}</li>`:"";
+  return `<div class="mu"><h2 class="sp">Как играть ${esc(H[pid][0])} против ${esc(ru)}</h2><ul class="plain">
+    ${row("Начало",mu.e)}${row("Дальше",mu.l)}${row("Не делай",mu.x)}${row("Сборка",mu.b)}</ul></div>`;
+}
 function drawKnown(){
   const enemy=st.enemy[st.lane], d=LANES[st.lane].E[enemy], ru=H[enemy][0];
   const PL=d.p.filter(x=>!st.ban.has(x[0]));
@@ -78,13 +84,14 @@ function drawKnown(){
     $("#result").innerHTML=`${head}<p class="why">Все подобранные контрпики в бане. Возьми героя, который тебе привычен, и смотри советы ниже.</p>${rest}`;
     return;
   }
-  const [pid,edge,w,kind]=PL[st.pick]; const why=w||WK[pid]||"";
+  const [pid,edge,w,kind]=PL[st.pick]; const mu=MU[st.lane+":"+enemy+":"+pid]; const why=(mu&&mu.w)||w||WK[pid]||"";
   const tag=edge!=null?`<span class="tag m">${fmt(edge)} к винрейту</span>`:`<span class="tag k">${kind==="wr"?"по винрейту":"по механике"}</span>`;
   const alts=PL.length>1?`<div><h2 class="sp">Варианты</h2><div class="alts">${PL.map((x,i)=>
     `<button class="alt" type="button" data-i="${i}" aria-pressed="${i===st.pick}">${ava(x[0])}${esc(H[x[0]][0])}<span class="e">${x[1]!=null?fmt(x[1]):x[3]==="wr"?"винр.":"мех."}</span></button>`).join("")}</div></div>`:"";
   $("#result").innerHTML=`${head}
     <div class="verdict">${ava(pid,true)}<span class="name">Бери: ${esc(H[pid][0])}</span>${tag}</div>
     <p class="why">${esc(why)}</p>
+    ${muBlock(mu,pid,ru)}
     ${alts}
     ${buildBlock(pid)}
     ${rest}`;

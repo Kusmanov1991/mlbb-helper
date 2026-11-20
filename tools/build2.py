@@ -24,7 +24,10 @@ rep('const LANES={', '// Мифическая честь (25–49 звёзд), 7
 
 # runtime
 i = s.index('const $=s=>document.querySelector(s);'); j = s.index('</script>')
-s = s[:i] + open('runtime.js', encoding='utf8').read() + s[j:]
+import importlib.util as _iu
+_sp=_iu.spec_from_file_location('matchups',os.path.join(os.path.dirname(os.path.abspath(__file__)),'matchups.py')); _m=_iu.module_from_spec(_sp); _sp.loader.exec_module(_m)
+MU_JS = 'const MU=' + json.dumps(_m.MU, ensure_ascii=False) + ';\n'
+s = s[:i] + MU_JS + open('runtime.js', encoding='utf8').read() + s[j:]
 
 # markup
 rep('<title>Контрпики по всем линиям</title>', '<title>Контрпики MLBB по всем линиям</title>')
@@ -58,6 +61,7 @@ rep('<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/co
     '<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a>, <a href="https://mlbbhub.com/draft">mlbbhub.com/draft</a></div>')
 
 css = '''
+.mu{margin:10px 0 4px}.mu li b{font-weight:600}
 .seg.lane button{padding:10px 2px;font-size:14px}
 .chip.banned{opacity:.45}
 .empty .alts{margin-top:8px}
