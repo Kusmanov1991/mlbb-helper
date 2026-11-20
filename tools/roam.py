@@ -1,0 +1,77 @@
+import json
+RU={"Floryn":"Флорин","Angela":"Ангела","Esmeralda":"Эсмеральда","Lesley":"Лесли","Cyclops":"Циклоп","Aamon":"Аамон","Rafaela":"Рафаэла","Karina":"Карина","Xavier":"Ксавьер","Bruno":"Бруно","Irithel":"Иритель","Layla":"Лейла","Atlas":"Атлас","Sun":"Сан","Akai":"Акай","Popol and Kupa":"Пополь и Купа","Valentina":"Валентина","Kadita":"Кадита","Johnson":"Джонсон","Belerick":"Белерик","Grock":"Грок","Joy":"Джой","Khufra":"Хуфра","Vexana":"Вексана","Martis":"Мартис","Kaja":"Кайя","Lapu-Lapu":"Лапу-Лапу","Zhuxin":"Чжу Синь","Alice":"Алиса","Minotaur":"Минотавр","Marcel":"Марсель","Bane":"Бейн","Yi Sun-shin":"И Сун-Син","Kalea":"Калея","Alucard":"Алукард","Silvanna":"Сильванна","Wanwan":"Ванван","Mathilda":"Матильда","Paquito":"Пакито","Hilda":"Хильда","Guinevere":"Гвиневра","Sora":"Сора","Badang":"Баданг","Chou":"Чу","Brody":"Броуди","Gusion":"Госсен","Odette":"Одетта","Ixia":"Иксия","Eudora":"Эйдора","Vale":"Вейл","Valir":"Валир","Natalia":"Наталья","Cici":"Чичи","Hylos":"Хилос","Masha":"Маша","Lylia":"Лилия","Estes":"Эстес","Hanzo":"Ханзо","Chang'e":"Чанъэ","Zhask":"Заск","Franco":"Франко","Yin":"Инь","Novaria":"Новария","Zilong":"Зилонг","Julian":"Джулиан","Granger":"Грейнджер","Thamuz":"Тамуз","Cecilion":"Сесилион","Pharsa":"Фарса","Alpha":"Альфа","Obsidia":"Обсидия","Yu Zhong":"Ю Чжун","Lolita":"Лолита","X.Borg":"Икс.Борг","Ling":"Линг","Faramis":"Фарамис","Aulus":"Аулус","Lancelot":"Ланселот","Zetian":"Зетиан","Yve":"Ив","Beatrix":"Беатрис","Moskov":"Москов","Natan":"Натан","Lunox":"Люнокс","Fredrinn":"Фредрин","Ruby":"Руби","Fanny":"Фанни","Freya":"Фрейя","Carmilla":"Кармилла","Jawhead":"Джавхед","Nana":"Нана","Harley":"Харли","Selena":"Селена","Aurora":"Аврора","Kagura":"Кагура","Leomord":"Леоморд","Melissa":"Мелисса","Clint":"Клинт","Claude":"Клауд","Gord":"Горд","Harith":"Харит","Khaleed":"Халид","Hirara":"Хирара","Terizla":"Теризла","Edith":"Эдит","Karrie":"Кэрри","Hanabi":"Ханаби","Kimmy":"Кимми","Luo Yi":"Луо И","Miya":"Мия","Tigreal":"Тигрил","Uranus":"Уранус","Balmond":"Бальмонд","Nolan":"Нолан","Diggie":"Дигги","Saber":"Сабер","Helcurt":"Хелкарт","Benedetta":"Бенедетта","Gloo":"Глу","Chip":"Чип","Arlott":"Арлотт","Dyrroth":"Дайрот","Phoveus":"Фовиус","Minsitthar":"Минситтар","Lukas":"Лукас","Suyou":"Суё"}
+def P(s):
+    out=[]
+    for part in s.split(","):
+        part=part.strip()
+        if not part: continue
+        n,e=part.rsplit(" ",1); out.append((n.strip(),float(e)))
+    return out
+R={
+"marcel":(57.4,[1,0,-1],"Floryn 4.7,Angela 4.7,Esmeralda 3.6,Lesley 3.6,Cyclops 3.3,Aamon 3.1,Rafaela 3.1,Karina 3.0,Xavier 2.3,Bruno 2.3,Irithel 1.9,Layla 1.8","Atlas 5.6,Sun 3.5,Akai 3.2,Popol and Kupa 3.2,Valentina 3.1,Kadita 3.0,Johnson 2.8,Belerick 2.7,Grock 2.7,Joy 2.5,Khufra 2.4,Vexana 2.3,Martis 2.2,Kaja 2.0,Lapu-Lapu 1.7"),
+"khufra":(54.8,[0,0,0],"Zhuxin 3.6,Alice 3.4,Minotaur 2.5,Marcel 2.4,Bane 2.4,Yi Sun-shin 1.9,Martis 1.8,Kalea 1.7","Alucard 3.4,Silvanna 3.2,Wanwan 3.1,Mathilda 3.0,Johnson 2.7,Paquito 2.5,Hilda 2.4,Layla 2.4,Guinevere 2.4,Sora 2.2,Badang 2.0,Chou 1.9,Brody 1.8,Gusion 1.8"),
+"rafaela":(54.5,[0,0,0],"Odette 2.7,Ixia 2.7,Silvanna 2.1,Eudora 2.0,Sora 2.0,Vale 2.0,Layla 1.9","Valir 3.5,Natalia 3.3,Marcel 2.9,Cici 2.6,Hylos 2.2,Masha 2.2,Lylia 1.6"),
+"diggie":(54.3,[1,0,-1],"Estes 3.8,Sun 3.3,Hanzo 3.1,Esmeralda 3.1,Chang'e 3.0,Layla 3.0,Zhask 2.8,Franco 2.7,Yin 2.7,Hilda 2.5,Novaria 2.5,Zilong 2.4,Julian 2.1,Granger 2.0,Thamuz 1.9,Cecilion 1.8,Pharsa 1.8","Alice 3.4,Cici 2.8,Zhuxin 2.7,Valir 2.7,Guinevere 2.6,Alpha 2.5,Obsidia 2.4,Brody 2.3,Badang 1.8,Yu Zhong 1.6"),
+"floryn":(54.1,[1,0,-1],"Lolita 4.2,Yin 2.8,Ixia 2.6,Silvanna 2.3,Eudora 2.3,Franco 2.2","Marcel 4.4,Alice 4.1,X.Borg 3.6,Ling 2.9,Faramis 2.7,Aulus 2.5,Lancelot 2.3,Masha 2.2,Zetian 2.0"),
+"minotaur":(53.6,[0,0,0],"Alice 2.9,Yve 2.8,Zhuxin 2.7,Beatrix 2.6,Joy 2.2","Lolita 4.6,Silvanna 2.9,Johnson 2.8,Khufra 2.7,Cyclops 2.5"),
+"carmilla":(53.2,[1,0,-1],"Valentina 4.0,X.Borg 3.2,Lesley 2.3,Benedetta 2.2,Xavier 2.1","Popol and Kupa 3.4,Chip 3.1,Hilda 2.2,Johnson 2.1,Gloo 1.9"),
+"gloo":(53.0,[0,0,0],"Faramis 5.8,Moskov 5.0,Natan 4.7,Lunox 4.1,Alice 3.8,Zhuxin 3.7,Ling 3.6,Fredrinn 3.5,Ruby 3.4,Aulus 3.2,Fanny 3.2,Vexana 3.1,Masha 3.0,Cici 2.7,Yu Zhong 2.5,Xavier 2.4,Kaja 2.2,Freya 2.1,Carmilla 1.9","Aamon 4.6,Johnson 4.0,Jawhead 3.3,Yin 3.0,Karina 2.9,Chang'e 2.8,Nana 2.8,Vale 2.8,Harley 2.7,Lesley 2.7,Esmeralda 2.4,Selena 2.3,Novaria 2.1,Zetian 2.0,Gusion 1.9,Pharsa 1.9"),
+"lolita":(53.2,[-1,0,1],"Zhuxin 6.9,Yve 6.8,Esmeralda 6.1,Aurora 5.8,Kagura 5.2,Kadita 4.8,Cecilion 4.2,Zetian 4.0,Leomord 3.9,Joy 3.7,Atlas 3.6,Minotaur 3.3,Pharsa 3.3,Melissa 3.3,Clint 3.3,Claude 3.2,Zhask 3.1,Grock 3.0,Gord 3.0,Harith 3.0,Freya 2.5,Khaleed 2.4,Hirara 2.1,Nana 1.9,Terizla 1.7,Vexana 1.6","Cyclops 9.4,Chang'e 5.6,Bane 5.3,Harley 5.2,Edith 5.1,Floryn 4.8,Bruno 4.3,Xavier 3.9,Aamon 3.8,Jawhead 3.7,Angela 3.6,Karrie 3.5,Hanabi 3.4,Kimmy 3.3,Gusion 3.1,Beatrix 2.4,Natan 2.3,Badang 2.2,Ruby 2.0,Yi Sun-shin 1.9,Luo Yi 1.8,Miya 1.7"),
+"atlas":(51.0,[0,0,0],"Marcel 5.6,Wanwan 3.8,Alice 3.3,Valentina 3.2,Ling 3.2,Fanny 2.7,Xavier 2.6,Lancelot 2.6,Kimmy 2.6,Moskov 2.2,Kadita 1.7,Yu Zhong 1.7","Layla 3.7,Lolita 3.6,Popol and Kupa 3.4,Estes 3.3,Johnson 3.0,Eudora 2.9,Nana 2.7,Hilda 2.7,Aamon 2.6,Cyclops 2.5,Vale 2.3,Franco 2.2,Bane 1.9"),
+"tigreal":(45.3,[0,0,0],"Alice 3.6,X.Borg 2.9,Zetian 2.5,Valir 2.4,Aulus 2.4","Zilong 2.7,Estes 2.7,Alucard 2.1,Lesley 2.0,Franco 2.0,Julian 1.5"),
+"estes":(52.6,[0,0,0],"Ixia 5.2,Beatrix 5.1,Sora 4.3,Nolan 4.0,Luo Yi 3.6,Atlas 3.3,Tigreal 2.6,Yin 2.2,Vale 2.2","Faramis 4.2,Cyclops 3.9,Alice 3.8,Diggie 3.8,Cici 3.7,Masha 3.5,Balmond 3.1,Lesley 2.8,Zhask 2.6,Obsidia 2.4,Aulus 2.0,Angela 2.0"),
+"angela":(50.1,[0,0,0],"Lolita 3.6,Franco 2.7,Silvanna 2.2,Zilong 2.0,Edith 1.9,Guinevere 1.6","Alice 4.7,Marcel 4.7,Balmond 3.7,Lancelot 3.3,Faramis 3.3,Uranus 2.7,Terizla 2.1,Grock 1.8"),
+"mathilda":(44.6,[0,0,0],"Esmeralda 4.7,Odette 3.4,Lolita 3.0,Khufra 2.9,Melissa 2.8,Cyclops 2.8,Alucard 2.6","Natalia 4.9,X.Borg 3.6,Valir 3.1,Helcurt 2.8,Lylia 2.5,Benedetta 2.5,Gord 2.3,Granger 1.9,Zetian 1.5,Clint 1.4"),
+"kaja":(49.7,[1,0,-1],"Odette 4.9,Lunox 3.1,Zhask 2.4,Saber 2.2,Marcel 1.9","Valir 3.3,Akai 2.7,Grock 2.6,Alpha 2.2,Gloo 2.2,Franco 2.1,Lylia 1.6"),
+"franco":(41.6,[-1,0,1],"Hanzo 2.7,Sun 2.5,Popol and Kupa 2.4,Atlas 2.2,Johnson 2.1,Tigreal 2.0","Diggie 2.7,Angela 2.7,Fanny 2.5,Floryn 2.5,Freya 1.9"),
+"chip":(47.4,[0,0,0],"Alice 3.6,Bane 3.1,Carmilla 3.1,Melissa 2.7,Martis 2.6,Aurora 2.1,Hanabi 2.0,Luo Yi 2.0,Lancelot 1.9,Vexana 1.5","Helcurt 3.9,Zilong 3.7,Mathilda 3.2,Natalia 2.7,Floryn 2.2,Gusion 2.1,Arlott 2.0,Novaria 1.9,Selena 1.9"),
+"belerick":(51.7,[0,0,0],"Xavier 3.0,Beatrix 2.9,Brody 2.8,Marcel 2.7,Lesley 2.7,Leomord 2.4,Clint 1.9","Miya 3.8,Zhask 3.0,Silvanna 2.9,Johnson 2.8,Saber 2.5,Melissa 2.2,Obsidia 2.1,Aurora 1.4"),
+"hylos":(48.7,[-1,0,1],"X.Borg 4.0,Yve 3.7,Zhuxin 3.2,Kimmy 3.0,Karrie 2.9,Cici 2.8,Rafaela 2.3,Cecilion 1.5","Zilong 2.4,Layla 2.2,Johnson 2.2,Saber 2.2,Nana 2.1,Vale 2.1,Miya 1.6"),
+"johnson":(49.3,[0,0,0],"Gloo 4.0,Alice 3.0,Atlas 3.0,Belerick 2.8,Marcel 2.8,Khufra 2.7,Minotaur 2.6,Harith 2.5,Natan 2.5,Kadita 2.3,Lylia 2.2,Carmilla 2.1,Claude 2.0,Grock 2.0","Saber 2.7,Layla 2.7,Valentina 2.7,Zilong 2.5,Dyrroth 2.1,Franco 2.1"),
+"natalia":(51.0,[-1,0,1],"Cyclops 5.1,Mathilda 4.7,Karina 4.5,Saber 3.8,Paquito 3.4,Rafaela 3.3,Alucard 3.3,Zetian 3.0,Brody 3.0,Chip 2.7,Suyou 2.7,Zhuxin 2.6,Leomord 2.5,Lukas 2.4,Aulus 2.3,Eudora 2.2,Gusion 1.8,Chou 1.7","Ling 5.5,Hanzo 5.0,Xavier 4.0,Minsitthar 3.6,Nolan 3.5,Gord 3.4,X.Borg 3.3,Novaria 3.3,Ixia 3.1,Valir 3.0,Helcurt 2.7,Karrie 2.5,Beatrix 2.5,Kimmy 2.3,Natan 2.1,Vexana 2.0,Claude 2.0,Pharsa 1.8,Cecilion 1.3"),
+"grock":(46.8,[-1,0,1],"Alice 3.6,Esmeralda 2.6,Kaja 2.4,Angela 2.3,Yve 2.2","Odette 2.0,Layla 2.0,Johnson 1.8,Yin 1.8,Akai 1.7"),
+"kalea":(50.4,[1,0,-1],"Phoveus 2.0,Hanabi 1.9,Balmond 1.6,Minsitthar 1.6,Miya 1.6","Fanny 2.5,Helcurt 1.9,Yve 1.9,Khufra 1.7,Valentina 1.7"),
+"faramis":(50.7,[0,0,0],"Estes 4.0,Odette 3.4,Angela 3.3,Alice 3.2,Julian 3.0,Dyrroth 2.4,Luo Yi 2.1","Gloo 5.8,Wanwan 3.5,Sun 2.8,Fanny 2.6,Karina 2.4"),
+}
+EN={"marcel":"Marcel","khufra":"Khufra","rafaela":"Rafaela","diggie":"Diggie","floryn":"Floryn","minotaur":"Minotaur","carmilla":"Carmilla","gloo":"Gloo","lolita":"Lolita","atlas":"Atlas","tigreal":"Tigreal","estes":"Estes","angela":"Angela","mathilda":"Mathilda","kaja":"Kaja","franco":"Franco","chip":"Chip","belerick":"Belerick","hylos":"Hylos","johnson":"Johnson","natalia":"Natalia","grock":"Grock","kalea":"Kalea","faramis":"Faramis"}
+ID={v:k for k,v in EN.items()}
+DESC={"marcel":"Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты.","khufra":"Прыжок с контролем и шар, который останавливает чужие рывки.","rafaela":"Лечит и ускоряет команду, ультимейт оглушает по линии.","diggie":"Ультимейт снимает контроль со всей команды и даёт к нему иммунитет.","floryn":"Лечит всю команду ультимейтом через всю карту.","minotaur":"В ярости подбрасывает всех вокруг и лечит союзников.","carmilla":"Связывает врагов ультимейтом: урон и контроль делятся между ними.","gloo":"Прилипает к вражескому герою и мешает ему драться.","lolita":"Щит блокирует летящие снаряды, ультимейт оглушает по области.","atlas":"Стягивает нескольких врагов и бросает их в одну точку.","tigreal":"Толкает и стягивает врагов ультимейтом под урон команды.","estes":"Самое сильное массовое лечение в затяжных драках.","angela":"Вселяется в союзника, даёт ему щит и лечение.","mathilda":"Переносит союзника и влетает во врагов с уроном.","kaja":"Ультимейтом выдёргивает одного врага к своей команде.","franco":"Притягивает крюком и подавляет цель ультимейтом.","chip":"Ставит порталы и переносит команду через карту.","belerick":"Возвращает урон атакующим и провоцирует врагов рядом.","hylos":"Очень живучий танк с замедляющей дорожкой.","johnson":"Превращается в машину и врезается во врагов с союзником на борту.","natalia":"Невидимый убийца: глушит и убивает тонких героев.","grock":"Ставит стену и наносит большой урон у стен.","kalea":"Саппорт-боец, сильнее всего до 10-й минуты.","faramis":"Ультимейт даёт команде вторую жизнь на несколько секунд."}
+TIP={"marcel":"В S-тире с винрейтом 57,4%. Его лучше банить, а против него берут лечащих саппортов.","khufra":"Не используй рывки рядом с его шаром: он сбивает их и подбрасывает.","rafaela":"Убивайте её первой: без лечения и ускорения её команда заметно слабее.","diggie":"Дождись, пока Дигги потратит ультимейт, и только потом вкладывай главный контроль.","floryn":"Её ультимейт лечит через всю карту. Берите предметы против лечения: «Трезубец» и «Господство льда».","minotaur":"Следи за его шкалой ярости: в ярости подброс дольше, отходи заранее.","carmilla":"Не стойте кучей: её ультимейт связывает героев и делит урон и контроль на всех.","gloo":"Когда Глу прилип, урон по нему частично идёт в тебя. Бейте его всей командой, пока он разделён.","lolita":"Не стреляй в её щит: он блокирует снаряды. Маги с уроном по области ломают её лучше всего.","atlas":"Не стойте кучей и держите «Зимнюю корону» или вспышку под его ультимейт.","tigreal":"Стой подальше от стен и не выстраивайся в линию с союзниками.","estes":"Предметы против лечения обязательны: «Трезубец» стрелку, «Господство льда» танку.","angela":"Фокусьте героя, в которого она вселилась, только после окончания ультимейта, либо убивайте её до него.","mathilda":"Сейчас слабый пик (винрейт 44,6%). Контроль ловит её в момент влёта.","kaja":"Не ходи один и держись вне дальности его ультимейта: он выдёргивает одного героя.","franco":"Стой за миньонами, чтобы крюк попадал в них. Сейчас слабый пик (винрейт 41,6%).","chip":"Следи за картой: порталы Чипа приводят всю команду туда, где её не ждёшь.","belerick":"Стрелкам с высокой скоростью атаки против него тяжело. Маги и урон умениями работают лучше.","hylos":"Не дерись на его дорожке. Герои с уроном от процента здоровья убивают его быстрее всех.","johnson":"Смотри на мини-карту: машина видна издалека. Отходи вбок или ставь танка на её пути.","natalia":"Она сильнее всего после 16-й минуты. Ходи вдвоём и проверяй кусты умениями.","grock":"Дерись на открытом месте, подальше от стен: возле них он намного сильнее.","kalea":"Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки.","faramis":"После его ультимейта враги оживают на несколько секунд. Отойди и добей, когда эффект закончится."}
+TANK=["Tough Boots","Dominance Ice","Athena's Shield","Antique Cuirass","Guardian Helmet","Immortality"]
+HEAL=["Magic Shoes","Enchanted Talisman","Flask of the Oasis","Oracle","Athena's Shield","Immortality"]
+SUP=["Magic Shoes","Enchanted Talisman","Fleeting Time","Dominance Ice","Athena's Shield","Immortality"]
+NT="Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."
+NH="Держись за спиной своего керри и не ходи один. Лечение береги под драку."
+NS="Ходи с лесником и давай обзор. Ультимейт держи под ключевой момент драки."
+NEW=" Новый герой: сборка общая для роли, сверь с рекомендуемой в игре."
+BUILD={}
+for k in ["khufra","atlas","tigreal","minotaur","franco","gloo","chip","hylos","johnson","grock","lolita","carmilla"]: BUILD[k]=(TANK,"Маскировка",NT)
+BUILD["belerick"]=(["Tough Boots","Cursed Helmet","Blade Armor","Athena's Shield","Guardian Helmet","Immortality"],"Маскировка",NT)
+for k in ["rafaela","estes","floryn","angela"]: BUILD[k]=(HEAL,"Благосклонность",NH)
+for k in ["diggie","mathilda","kaja","faramis"]: BUILD[k]=(SUP,"Поощрение",NS)
+BUILD["marcel"]=(SUP,"Поощрение",NS+NEW); BUILD["kalea"]=(SUP,"Поощрение",NS+NEW)
+BUILD["natalia"]=(["Magic Shoes","Hunter Strike","Blade of the Heptaseas","Malefic Roar","Blade of Despair","Immortality"],"Острый удар","Ходи в невидимости за вражескими стрелком и магом. Глуши их и убивай, пока команда отвлекает остальных.")
+ORDER=sorted(R,key=lambda k:-R[k][0])
+J=lambda x:json.dumps(x,ensure_ascii=False)
+ru=lambda n:RU[n]
+num=lambda v:("%.1f"%v).replace(".",",")
+H=",".join('%s:[%s,%s]'%(k,J(RU[EN[k]]),J(EN[k])) for k in ORDER)
+Bjs=",\n".join(' %s:{i:%s,s:"Flicker",r:%s,n:%s}'%(k,J(BUILD[k][0]),J(BUILD[k][1]),J(BUILD[k][2])) for k in ORDER)
+ER=[];BL=[]
+for k in ORDER:
+    wr,ph,c,s=R[k]; c=P(c); s=P(s)
+    picks=[[ID[n],e,"По ранговой статистике выигрывает этот матчап. "+DESC[ID[n]]] for n,e in c if n in ID][:4]
+    if not picks:
+        strong={n for n,_ in s}
+        cand=[x for x in ORDER if x!=k and EN[x] not in strong][:3]
+        picks=[[x,None,"Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт %s%%), и у врага нет против него преимущества. %s"%(num(R[x][0]),DESC[x]),"wr"] for x in cand]
+    t=[[ru(n),e] for n,e in c if n not in ID][:5]
+    a=[[ru(n),e] for n,e in s if n in ID]
+    tips=[]
+    if ph==[1,0,-1]: tips.append("Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки и тяни игру.")
+    if ph==[-1,0,1]: tips.append("Слабее всего до 10-й минуты и сильнее всего после 16-й. Набирай преимущество в начале.")
+    tips.append(TIP[k])
+    ER.append(' %s:{ph:%s,p:%s,\n  t:%s,a:%s,\n  tips:%s}'%(k,J(ph),J(picks),J(t),J(a),J(tips)))
+    BL.append('  {id:%s,wr:%s,c:%s,s:%s}'%(J(k),wr,J([[ru(n),e] for n,e in c]),J([[ru(n),e] for n,e in s])))
+open("roam_out.json","w",encoding="utf8").write(json.dumps({"H":H,"B":Bjs,"ER":",\n".join(ER),"BL":",\n".join(BL),"ORDER":ORDER},ensure_ascii=False))
+print(ORDER)

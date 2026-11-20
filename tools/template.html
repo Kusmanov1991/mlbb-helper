@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Контрпики по всем линиям</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: draft-room sheet. Lane and mode switches on top, picker, one verdict card.
+   Everything reachable with one thumb during the pick timer. */
+:root{
+  --bg:#f3f1ea;--panel:#ffffff;--panel-2:#ebe8de;--ink:#1b2130;--muted:#5d6577;--line:#d6d2c4;
+  --gold:#a56a00;--gold-soft:#f6e6bf;--good:#1f7a4d;--good-soft:#dcefe4;--bad:#b23a2e;--bad-soft:#f6dedb;--magic:#5a4fb3;
+  --display:"Russo One","Arial Black",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101522;--panel:#1a2133;--panel-2:#232c42;--ink:#eef0f6;--muted:#9aa4ba;--line:#2f3a54;
+    --gold:#f0b83c;--gold-soft:#3a3018;--good:#5fd39a;--good-soft:#173527;--bad:#ff8a7c;--bad-soft:#3d1f1c;--magic:#a99cff;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101522;--panel:#1a2133;--panel-2:#232c42;--ink:#eef0f6;--muted:#9aa4ba;--line:#2f3a54;
+  --gold:#f0b83c;--gold-soft:#3a3018;--good:#5fd39a;--good-soft:#173527;--bad:#ff8a7c;--bad-soft:#3d1f1c;--magic:#a99cff;color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:400;font-size:26px;line-height:1.15;margin:0;text-wrap:balance}
+h1 span{color:var(--gold)}
+.stamp{color:var(--muted);font-size:13px}
+h2{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+h2.sp{margin-bottom:8px}
+.switches{display:flex;flex-direction:column;gap:8px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--panel-2);padding:4px;border-radius:12px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:15px;padding:10px 4px;border-radius:9px;cursor:pointer;min-height:44px}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.seg.lane button[aria-pressed="true"]{background:var(--gold);color:#16130a;box-shadow:none}
+.picker{display:flex;flex-direction:column;gap:10px}
+.hint{margin:0;font-size:14px;color:var(--muted)}
+input[type=search]{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit}
+input:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:600;font-size:14px;padding:8px;border-radius:10px;cursor:pointer;min-height:44px;line-height:1.2;display:flex;align-items:center;gap:8px;text-align:left}
+.chip small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#16130a}
+.chip[aria-pressed="true"] small{color:#3a2c08}
+.pool{display:flex;flex-wrap:wrap;gap:6px;max-height:232px;overflow-y:auto;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.tog{appearance:none;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:8px 12px;border-radius:999px;cursor:pointer;min-height:40px}
+.tog[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.selrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.link{appearance:none;border:0;background:none;color:var(--gold);font:inherit;font-weight:600;cursor:pointer;padding:6px 0;text-decoration:underline}
+.empty{color:var(--muted);font-size:14px;padding:6px 2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.versus{font-size:14px;color:var(--muted)}
+.versus b{color:var(--ink)}
+.verdict{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.verdict .name{font-family:var(--display);font-size:30px;line-height:1.1;color:var(--gold)}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag.m{background:var(--good-soft);color:var(--good)}
+.tag.k{background:var(--panel-2);color:var(--muted)}
+.tag.w{background:var(--gold-soft);color:var(--gold)}
+.why{margin:0;font-size:15px}
+.alts{display:flex;flex-wrap:wrap;gap:8px}
+.alt{appearance:none;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font:inherit;font-size:14px;font-weight:600;border-radius:999px;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px}
+.alt[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.alt span.e{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+ol.build{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;counter-reset:b}
+ol.build li{counter-increment:b;display:flex;align-items:center;gap:10px;background:var(--panel-2);border-radius:10px;padding:9px 12px;font-weight:600;font-size:15px;line-height:1.2}
+ol.build li::before{content:counter(b);flex:none;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#16130a;font-family:var(--display);font-size:13px;display:grid;place-items:center}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+.note{font-size:13px;color:var(--muted);margin:0}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+ul.pm{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px}
+ul.pm li{display:flex;gap:8px;align-items:baseline}
+ul.pm b{flex:none;width:58px;font-variant-numeric:tabular-nums}
+ul.pm .up b{color:var(--good)} ul.pm .dn b{color:var(--bad)}
+.rows{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--panel-2);font-variant-numeric:tabular-nums}
+.pill i{font-style:normal;font-weight:500;color:var(--muted);margin-left:4px}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.bad i{color:inherit;opacity:.8}
+.phase{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.phase div{border-radius:8px;padding:7px 6px;text-align:center;font-size:12px;background:var(--panel-2);color:var(--muted)}
+.phase div b{display:block;font-size:13px;color:var(--ink)}
+.phase .hi{background:var(--bad-soft)}.phase .hi b{color:var(--bad)}
+.phase .lo{background:var(--good-soft)}.phase .lo b{color:var(--good)}
+.sit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.sit div{background:var(--panel-2);border-radius:10px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
+.sit b{display:block}.sit p{margin:0}
+.ava{flex:none;display:inline-grid;place-items:center;border-radius:50%;color:#fff;font-family:var(--display);font-weight:400;width:28px;height:28px;font-size:11px;letter-spacing:.02em}
+.ava.big{width:52px;height:52px;font-size:19px}
+.ico{flex:none;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+.ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ico.p{color:var(--bad)}.ico.m{color:var(--magic)}.ico.d{color:var(--good)}.ico.b{color:var(--gold)}
+footer{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+footer a{color:var(--gold)}
+@media (prefers-reduced-motion:no-preference){.chip,.alt,.tog,.seg button{transition:background-color .12s,border-color .12s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Контрпики <span id="laneTitle">линии золота</span></h1>
+    <div class="stamp">Mobile Legends · сезон 42 · патч 2.2.23 · данные матчапов на 15–16 ноября 2026</div>
+  </header>
+
+  <div class="switches">
+    <div class="seg lane" role="group" aria-label="Линия">
+      <button type="button" data-lane="gold">Золото</button>
+      <button type="button" data-lane="mid">Мид</button>
+      <button type="button" data-lane="roam">Роум</button>
+      <button type="button" data-lane="exp">Опыт</button>
+      <button type="button" data-lane="jungle">Лес</button>
+    </div>
+    <div class="seg" role="group" aria-label="Режим">
+      <button type="button" data-mode="known">Знаю, кто на линии</button>
+      <button type="button" data-mode="blind">Пикаю вслепую</button>
+    </div>
+  </div>
+
+  <section class="picker" id="pickKnown" aria-label="Выбор вражеского героя">
+    <h2>Кого взял враг</h2>
+    <input id="q" type="search" placeholder="Поиск героя" autocomplete="off" aria-label="Поиск героя">
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>Такого героя в списке нет. Попробуй другое написание.</div>
+  </section>
+
+  <section class="picker" id="pickBlind" aria-label="Уже открытые враги" hidden>
+    <h2>Кого у врага уже видно</h2>
+    <p class="hint">Отметь открытых врагов с любых линий. Можно никого не отмечать: тогда порядок идёт по винрейту.</p>
+    <input id="q2" type="search" placeholder="Поиск: Наталья, Лолита…" autocomplete="off" aria-label="Поиск открытого врага">
+    <div class="pool" id="pool"></div>
+    <div class="selrow" id="selrow"></div>
+  </section>
+
+  <section class="card" id="result" aria-live="polite"></section>
+
+  <section class="card">
+    <h2>Что менять в сборке по ситуации</h2>
+    <div class="sit" id="sit"></div>
+  </section>
+
+  <footer>
+    <div><b>Откуда данные.</b> Цифры «+N п.п.» показывают, насколько винрейт героя вырастает в этом матчапе по ранговым играм (mlbbhub, патч 2.2.23; для части героев последние данные от патча 2.2.16a). Метка «по механике» значит, что измеренного преимущества на этой линии нет и герой подобран по набору умений. Метка «по винрейту» значит, что измеренного контрпика на этой линии нет и показан сильный герой патча.</div>
+    <div><b>Слепой пик.</b> На золоте и миду в списке герои, против которых на их линии почти нет измеренных контрпиков, на роуме, линии опыта и в лесу все герои линии (показаны 12 лучших под состав). Оценка = винрейт героя за 7 дней минус 50, плюс его преимущества и минус его слабости против отмеченных врагов. Учитываются только матчапы, по которым есть статистика, поэтому отметить можно не любого героя.</div>
+    <div><b>Сборки.</b> Базовый порядок закупки на всю игру, названия как в русской версии. Сборки Мии и Беатрис сверены с гайдами сезона 42. На роуме, линии опыта и в лесу сборки шаблонные, одна на тип героя: обязательно сверяй с рекомендуемыми в игре.</div>
+    <div><b>Значки.</b> Кружки с буквами и значки предметов нарисованы для этой страницы: красный — физический урон, фиолетовый — магия, зелёный — защита, золотой — ботинки. Это не игровые иконки.</div>
+    <div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a></div>
+  </footer>
+</div>
+
+<script>
+const H={
+ brody:["Броуди","Brody"],lesley:["Лесли","Lesley"],obsidia:["Обсидия","Obsidia"],hanabi:["Ханаби","Hanabi"],
+ claude:["Клауд","Claude"],miya:["Мия","Miya"],layla:["Лейла","Layla"],granger:["Грейнджер","Granger"],
+ wanwan:["Ванван","Wanwan"],karrie:["Кэрри","Karrie"],beatrix:["Беатрис","Beatrix"],moskov:["Москов","Moskov"],
+ clint:["Клинт","Clint"],bruno:["Бруно","Bruno"],melissa:["Мелисса","Melissa"],ixia:["Иксия","Ixia"],
+ irithel:["Иритель","Irithel"],natan:["Натан","Natan"],kimmy:["Кимми","Kimmy"],popol:["Пополь и Купа","Popol and Kupa"],
+ harith:["Харит","Harith"],
+ valir:["Валир","Valir"],gord:["Горд","Gord"],xavier:["Ксавьер","Xavier"],cyclops:["Циклоп","Cyclops"],
+ kadita:["Кадита","Kadita"],zetian:["Зетиан","Zetian"],cecilion:["Сесилион","Cecilion"],kagura:["Кагура","Kagura"],
+ yve:["Ив","Yve"],lunox:["Люнокс","Lunox"],luoyi:["Луо И","Luo Yi"],pharsa:["Фарса","Pharsa"],lylia:["Лилия","Lylia"],
+ vexana:["Вексана","Vexana"],valentina:["Валентина","Valentina"],zhask:["Заск","Zhask"],zhuxin:["Чжу Синь","Zhuxin"],
+ eudora:["Эйдора","Eudora"],aurora:["Аврора","Aurora"],nana:["Нана","Nana"],odette:["Одетта","Odette"],
+ vale:["Вейл","Vale"],harley:["Харли","Harley"],novaria:["Новария","Novaria"],alice:["Алиса","Alice"],
+/*H_GEN*/
+};
+const ORDER_G=["brody","lesley","obsidia","hanabi","claude","miya","layla","granger","wanwan","karrie","beatrix","moskov","clint","bruno","melissa","ixia","irithel","natan","kimmy","popol"];
+/*ORDER_GEN*/
+const ORDER_M=["valir","gord","xavier","cyclops","kadita","zetian","cecilion","kagura","novaria","yve","lunox","luoyi","pharsa","lylia","vexana","valentina","zhask","zhuxin","eudora","aurora","nana","odette","vale","harley"];
+
+// Сборка героя, которого берёшь ты: 6 предметов по порядку, заклинание, подсказка
+const MAGE=["Arcane Boots","Clock of Destiny","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive"];
+const B={
+ popol:{i:["Swift Boots","Hunter Strike","Blade of Despair","Malefic Roar","Sea Halberd","Wind of Nature"],s:"Flicker",n:"Ставь ловушки в кустах у линии и держи Купу впереди себя."},
+ clint:{i:["Magic Shoes","Endless Battle","Berserker's Fury","Great Dragon Spear","Malefic Roar","Blade of Despair"],s:"Flicker",n:"После каждого умения делай автоатаку: усиленный выстрел бьёт дальше обычного."},
+ bruno:{i:["Swift Boots","Berserker's Fury","Haas's Claws","Great Dragon Spear","Malefic Roar","Blade of Despair"],s:"Flicker",n:"Крит в первую очередь. Подбирай мяч после каждого удара."},
+ brody:{i:["Tough Boots","Hunter Strike","Blade of Despair","Malefic Roar","Rose Gold Meteor","Wind of Nature"],s:"Flicker",n:"Накопи 4 метки автоатаками и только потом жми ультимейт."},
+ miya:{i:["Swift Boots","Windtalker","Berserker's Fury","Haas's Claws","Malefic Roar","Blade of Despair"],s:"Inspire",n:"Сборка сверена с гайдом сезона 42. Последний слот меняй на «Ветер природы», если на тебя ныряют."},
+ beatrix:{i:["Swift Boots","Blade of Despair","Hunter Strike","Haas's Claws","Sea Halberd","Malefic Gun"],s:"Flicker",n:"Сборка сверена с гайдом сезона 42. На линии держи снайперку, в драке переключайся на дробовик."},
+ wanwan:{i:["Swift Boots","Corrosion Scythe","Demon Hunter Sword","Golden Staff","Wind of Nature","Malefic Roar"],s:"Inspire",n:"Сбей все слабые точки цели, чтобы открыть ультимейт."},
+ ixia:{i:["Swift Boots","Hunter Strike","Endless Battle","Blade of Despair","Malefic Roar","Wind of Nature"],s:"Flicker",n:"Ультимейт включай из-за спины команды: во время него ты не двигаешься."},
+ lesley:{i:["Swift Boots","Berserker's Fury","Haas's Claws","Blade of Despair","Malefic Roar","Great Dragon Spear"],s:"Flicker",n:"Стреляй из маскировки с максимальной дистанции и не подходи ближе."},
+ natan:{i:["Arcane Boots","Feather of Heaven","Genius Wand","Holy Crystal","Divine Glaive","Wishing Lantern"],s:"Flicker",n:"Сборка на магический урон. Копи стаки пассивки перед дракой."},
+ irithel:{i:["Swift Boots","Berserker's Fury","Windtalker","Haas's Claws","Malefic Roar","Blade of Despair"],s:"Flicker",n:"Стреляй на ходу и не останавливайся: это твоё главное преимущество."},
+ granger:{i:["Magic Shoes","Hunter Strike","Blade of Despair","Endless Battle","Malefic Roar","Great Dragon Spear"],s:"Flicker",n:"Шестая пуля в обойме критует. Добивай ультимейтом издалека."},
+ moskov:{i:["Swift Boots","Corrosion Scythe","Demon Hunter Sword","Golden Staff","Malefic Roar","Wind of Nature"],s:"Inspire",n:"Вставай так, чтобы копьё пробивало врага и миньонов за ним."},
+ hanabi:{i:["Swift Boots","Corrosion Scythe","Demon Hunter Sword","Golden Staff","Malefic Roar","Blade of Despair"],s:"Inspire",n:"Дерись рядом с миньонами: отскоки сюрикенов достают врага за ними."},
+ harith:{i:["Magic Shoes","Starlium Scythe","Holy Crystal","Genius Wand","Blood Wings","Winter Crown"],s:"Flicker",n:"Маг на линии золота. Дерись внутри зоны ультимейта, там рывок откатывается быстрее."},
+ claude:{i:["Swift Boots","Demon Hunter Sword","Golden Staff","Corrosion Scythe","Malefic Roar","Wind of Nature"],s:"Flicker",n:"Оставь Декстера как точку возврата, влетай с ультимейтом и возвращайся."},
+ melissa:{i:["Swift Boots","Windtalker","Berserker's Fury","Haas's Claws","Malefic Roar","Great Dragon Spear"],s:"Flicker",n:"Ультимейт выталкивает ныряющих героев, держи его для защиты."},
+ layla:{i:["Swift Boots","Berserker's Fury","Windtalker","Haas's Claws","Malefic Roar","Blade of Despair"],s:"Inspire",n:"Рывка у тебя нет: стой позади команды и стреляй с максимальной дистанции."},
+ karrie:{i:["Swift Boots","Demon Hunter Sword","Golden Staff","Corrosion Scythe","Wind of Nature","Immortality"],s:"Inspire",n:"Каждая пятая атака бьёт чистым уроном от здоровья цели. Начинай с танков."},
+ kimmy:{i:["Magic Shoes","Hunter Strike","Blade of Despair","Malefic Roar","Sea Halberd","Wind of Nature"],s:"Flicker",n:"Вариант на физический урон. У Кимми есть и магическая сборка, сверь с рекомендуемой в игре."},
+ valir:{i:["Arcane Boots","Glowing Wand","Ice Queen Wand","Genius Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Держи врага на расстоянии огненной стеной и добивай огненными шарами."},
+ gord:{i:["Arcane Boots","Glowing Wand","Ice Queen Wand","Genius Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Сначала оглуши шаром, затем включай луч. Стой за танком: рывка у тебя нет."},
+ xavier:{i:["Magic Shoes","Enchanted Talisman","Genius Wand","Glowing Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Чередуй умения, чтобы усилить их пассивкой. Ультимейтом добивай через всю карту."},
+ cyclops:{i:["Magic Shoes","Enchanted Talisman","Genius Wand","Concentrated Energy","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Каждое попадание шарами сокращает откат умений. Ультимейт лови на убийцу, который на тебя ныряет."},
+ cecilion:{i:["Demon Boots","Clock of Destiny","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Копи стаки пассивки с первой минуты: каждое попадание первым умением усиливает тебя."},
+ lylia:{i:MAGE,s:"Flicker",n:"Ставь бомбы под замедление и взрывай. Ультимейт возвращает тебя назад с прежним здоровьем."},
+ novaria:{i:MAGE,s:"Flicker",n:"Стреляй сквозь стены с максимальной дистанции: чем дольше летит снаряд, тем больше урон."},
+ eudora:{i:["Arcane Boots","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive","Blood Wings"],s:"Flicker",n:"Комбо из кустов: оглушение, затем молния и ультимейт. Вне засады ты слабее."},
+ aurora:{i:["Arcane Boots","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive","Winter Crown"],s:"Flicker",n:"Копи заряды пассивки, чтобы умение заморозило цель, и только потом заходи."},
+ nana:{i:MAGE,s:"Flicker",n:"Ставь Молину там, куда враг будет нырять. Пассивка один раз спасает от смерти."},
+ vale:{i:MAGE,s:"Flicker",n:"Подбрось врага вторым умением и сразу клади ультимейт под него."},
+ harley:{i:["Arcane Boots","Starlium Scythe","Genius Wand","Holy Crystal","Divine Glaive","Blood Wings"],s:"Flicker",n:"Оставь шляпу для возврата, влетай, ставь ультимейт на тонкую цель и возвращайся."},
+ kagura:{i:MAGE,s:"Flicker",n:"Зонтик снимает контроль при возврате. Комбо: зонт, рывок к зонту, ультимейт дважды."},
+ pharsa:{i:MAGE,s:"Flicker",n:"Ультимейт включай с безопасного места за спинами команды, от ганка улетай птицей."},
+ kadita:{i:["Arcane Boots","Genius Wand","Holy Crystal","Divine Glaive","Blood Wings","Winter Crown"],s:"Flicker",n:"Заходи в волне: в ней ты не получаешь контроль. Ультимейт ставь вплотную к цели."},
+ lunox:{i:["Arcane Boots","Genius Wand","Concentrated Energy","Holy Crystal","Divine Glaive","Blood Wings"],s:"Flicker",n:"Ультимейт в режиме порядка даёт неуязвимость: переживи им прокаст врага, затем бей хаосом."},
+ yve:{i:["Arcane Boots","Clock of Destiny","Glowing Wand","Ice Queen Wand","Genius Wand","Divine Glaive"],s:"Flicker",n:"Ультимейт ставь из-за спины команды: во время него ты не двигаешься."},
+ valentina:{i:["Arcane Boots","Clock of Destiny","Genius Wand","Holy Crystal","Divine Glaive","Winter Crown"],s:"Flicker",n:"Копируй ультимейт самого полезного врага. Перед драфтом смотри, чей ультимейт стоит украсть."},
+ odette:{i:["Arcane Boots","Clock of Destiny","Genius Wand","Holy Crystal","Divine Glaive","Winter Crown"],s:"Flicker",n:"Во время ультимейта ты уязвима для контроля: включай его после вспышки или из-за стены."},
+ vexana:{i:["Arcane Boots","Glowing Wand","Genius Wand","Holy Crystal","Divine Glaive","Ice Queen Wand"],s:"Flicker",n:"Попади страхом первым умением, затем клади второе и ультимейт в ту же точку."},
+ zetian:{i:MAGE,s:"Flicker",n:"Новый герой: это общая сборка для мага с бёрстом. Сверь её с рекомендуемой в игре."},
+ alice:{i:["Demon Boots","Clock of Destiny","Glowing Wand","Ice Queen Wand","Winter Crown","Immortality"],s:"Flicker",n:"Живучий маг ближнего боя, чаще играет на линии опыта. Влетай в центр драки и держи ультимейт включённым."},
+/*B_GEN*/
+};
+
+// Матчапы линии золота. p: [герой, преимущество в п.п. или null, почему]
+const EG={
+ brody:{ph:[1,0,-1],p:[["popol",null,"Ловушки и Купа мешают ему спокойно набивать метки, а линия у Пополя сильная с первых минут."],["clint",null,"Достаёт усиленной атакой издалека и не проигрывает раннюю стадию."],["bruno",null,"Держит размен в начале и сильнее Броуди в поздней игре."]],
+  t:[["Сабер",2.3],["Маша",2.3],["Дигги",2.3],["Баратс",1.9],["Хуфра",1.8]],a:[["Иритель",2.7],["Натан",2.2]],
+  tips:["Броуди сильнее всего до 10-й минуты. Не разменивайся в начале, фарми под башней.","После 16-й минуты он проседает. Тяни игру и дерись в поздней стадии."]},
+ lesley:{ph:[-1,0,1],p:[["popol",2.5,"Единственный стрелок с измеренным преимуществом. Ловушки раскрывают её маскировку, Купа принимает выстрелы."],["brody",null,"Давит в первые минуты, пока Лесли слаба, и убивает её одним комбо."]],
+  t:[["Эстес",2.9],["Маша",2.9],["Глу",2.7],["Сан",2.2],["Тигрил",2.0]],a:[["Клауд",3.9],["Бруно",3.3],["Иритель",2.2]],
+  tips:["Лесли слаба в начале и раскрывается после 16-й минуты. Набери преимущество за первые 10 минут.","Цепной контроль (Хуфра, Минотавр, Лолита, Тигрил) сбивает её рывки. Проси ганк: сама она от него не уходит."]},
+ obsidia:{ph:[1,0,-1],p:[["miya",2.3,"Единственный стрелок с измеренным преимуществом против Обсидии. Переживи начало и перестреляй её позже."],["bruno",null,"Подходит по механике: сильный урон с дистанции и хороший рост к поздней игре."]],
+  t:[["Баксия",3.5],["Эстес",2.4],["Дигги",2.4],["Белерик",2.1]],a:[],
+  tips:["Её банят чаще всех (51%). Если бан свободен, лучше потратить его на неё.","Обсидия сильна до 10-й минуты и слабеет в затяжной игре. Избегай ранних драк.","Ей мешает контроль: Белерик, Хуфра, Марсель, Лолита."]},
+ hanabi:{ph:[0,1,0],p:[["beatrix",3.3,"Лучший стрелок против Ханаби: перестреливает её с большей дистанции."],["wanwan",2.7,"Уходит от её контроля рывками и убивает ультимейтом."],["ixia",2.4,"Выигрывает раннюю стадию и давит её до пика силы."]],
+  t:[["Лолита",3.4],["Карина",2.5],["Бенедетта",2.5],["Лапу-Лапу",2.3]],a:[["Пополь и Купа",2.1],["Москов",2.1]],
+  tips:["Ханаби сильнее всего с 10-й по 16-ю минуту. Задави её раньше или переиграй позже.","Не стой рядом с миньонами и союзниками: её сюрикены отскакивают."]},
+ claude:{ph:[0,0,0],p:[["lesley",3.9,"Самое большое преимущество среди стрелков: убивает Клауда раньше, чем он успевает нанести урон."],["natan",1.9,"Второй измеренный вариант на линию золота."]],
+  t:[["Аамон",2.9],["Эдит",2.7],["Наталья",2.0]],a:[["Иксия",2.6]],
+  tips:["У Клауда нет слабой стадии игры. Выигрывай позицией и командной игрой.","Контроль ломает его подвижность: Марсель, Хуфра, Минотавр, Кармилла."]},
+ miya:{ph:[0,0,0],p:[["bruno",null,"Измеренного преимущества у стрелков нет. Бруно подходит по механике: сильный бёрст по тонкой цели."],["clint",null,"Давит на линии усиленными выстрелами и не даёт ей фармить."],["brody",null,"Убивает Мию одним комбо, пока у неё нет предметов."]],
+  t:[["Белерик",3.8],["Гатоткача",2.4],["Халид",1.9],["Хилос",1.7],["Лолита",1.7]],a:[["Обсидия",2.3],["Москов",2.1],["Иритель",2.1]],
+  tips:["Лучше всего Мию контрят танки, которые возвращают урон: попроси роумера взять Белерика.","Слабой стадии у неё нет. Наказывай, когда её ультимейт в откате."]},
+ layla:{ph:[-1,0,1],p:[["bruno",null,"Измеренного преимущества у стрелков нет. Бруно сильнее на линии и убивает её в начале."],["clint",null,"Выигрывает размен в первые минуты, пока Лейла слаба."],["irithel",null,"Подвижная: уходит от её ультимейта и стреляет на ходу."]],
+  t:[["Атлас",3.7],["Джонсон",2.7],["Сан",2.7],["Хуфра",2.4],["Хилос",2.2]],a:[],
+  tips:["Лейла слабее всего до 10-й минуты и сильнее всего после 16-й. Заканчивай игру рано.","У неё нет рывка. Любой ганк с контролем её убивает."]},
+ granger:{ph:[1,0,-1],p:[["clint",null,"Измеренного преимущества у стрелков нет. Клинт держит раннюю стадию и не отдаёт линию."],["bruno",null,"Не уступает в бёрсте и сильнее в поздней игре."],["popol",null,"Купа принимает его пули, ловушки останавливают рывок."]],
+  t:[["Фанни",3.5],["Хильда",3.3],["Уранус",2.3],["Акай",1.9],["Джавхед",1.9]],a:[["Беатрис",2.4],["Иксия",2.3]],
+  tips:["Грейнджер сильнее всего до 10-й минуты и слабеет после 16-й. Не умирай в начале.","Держи здоровье выше половины: его ультимейт добивает издалека."]},
+ wanwan:{ph:[-1,0,1],p:[["bruno",3.0,"Лучший стрелок против Ванван: убивает её быстрее, чем она сбивает слабые точки."],["irithel",2.5,"Стреляет на ходу, поэтому Ванван сложно открыть на ней ультимейт."]],
+  t:[["Фовиус",6.5],["Люнокс",3.5],["Фарамис",3.5],["Циклоп",3.5],["Хуфра",3.2]],a:[["Иксия",4.1],["Ханаби",2.8],["Беатрис",2.4]],
+  tips:["Ванван слабее всего до 10-й минуты. Дави её с первых волн.","Фовиус на линии опыта даёт +6,5 п.п.: проси его у команды.","Не давай обходить себя по кругу: стой спиной к стене или башне."]},
+ karrie:{ph:[1,-1,0],p:[["popol",null,"Измеренного преимущества у стрелков нет. Пополь выигрывает линию и держит её на дистанции ловушками."],["bruno",null,"Больше дальность и бёрст: убивает её до того, как она наберёт стаки."],["clint",null,"Давит усиленными выстрелами издалека."]],
+  t:[["Сан",2.7],["Аргус",2.7],["Минситтар",2.6],["Лолита",2.6],["Икс.Борг",2.3]],a:[],
+  tips:["Кэрри плавит танков чистым уроном. Не рассчитывай, что передняя линия её удержит.","У неё короткая дистанция атаки. Стреляй с расстояния и не подпускай."]},
+ beatrix:{ph:[1,-1,0],p:[["granger",2.4,"Обменивается бёрстом на её дистанции и добивает ультимейтом."],["irithel",2.4,"Подвижная: уходит от снайперского выстрела и стреляет на ходу."],["wanwan",2.4,"Рывками уворачивается от её умений."],["moskov",2.0,"Быстро сокращает дистанцию и переигрывает по скорости атаки."]],
+  t:[["Кайя",2.2],["Лолита",2.2],["Чу",2.1]],a:[["Ханаби",3.3]],
+  tips:["Беатрис сильнее всего до 10-й минуты. Не стой на прямой линии под её снайперкой.","Вблизи без дробовика она слабее. Заходи, когда у неё в руках дальнобойное оружие."]},
+ moskov:{ph:[0,0,0],p:[["miya",2.1,"Лучший измеренный вариант: перестреливает Москова в затяжном размене."],["hanabi",2.0,"Щит защищает от его контроля, а отскоки бьют его за миньонами."]],
+  t:[["Циклоп",2.1],["Дайрот",2.1],["Сабер",2.0],["Мартис",2.0]],a:[["Беатрис",2.2]],
+  tips:["Не стой у стен: копьё оглушает, если отбрасывает тебя в стену.","Не выстраивайся с союзниками в одну линию, его атаки пробивают насквозь."]},
+ clint:{ph:[1,0,-1],p:[["harith",1.4,"Единственный герой линии золота с измеренным преимуществом. Маг с рывками, уходит от его выстрелов."],["bruno",null,"Подходит по механике: сильнее Клинта в поздней игре."],["popol",null,"Купа блокирует усиленные выстрелы и держит линию."]],
+  t:[["Фанни",2.7],["Сабер",1.4],["Матильда",1.4],["Алиса",1.3]],a:[],
+  tips:["Клинт сильнее всего до 10-й минуты и проседает после 16-й. Фарми спокойно и тяни игру.","После каждого умения его следующий выстрел бьёт дальше. Отходи, когда он использовал умение."]},
+ bruno:{ph:[0,0,0],p:[["lesley",3.2,"Лучший стрелок против Бруно: стреляет дальше и убивает его из маскировки."]],
+  t:[["Лолита",4.4],["Одетта",2.4],["Аамон",2.3],["Карина",2.1]],a:[["Ванван",3.0]],
+  tips:["После реворка в сезоне 42 Бруно играет агрессивно. Не подставляйся под мяч.","Лолита блокирует его мяч щитом и даёт +4,4 п.п.: проси её в роум."]},
+ melissa:{ph:[-1,0,1],p:[["ixia",1.9,"Единственный стрелок с измеренным преимуществом. Сильна в начале, пока Мелисса слаба."],["bruno",null,"Давит раннюю стадию и убивает её до ключевых предметов."],["clint",null,"Выигрывает размен на линии в первые минуты."]],
+  t:[["Белерик",2.6],["Теризла",2.0],["Эдит",1.7],["Харли",1.7]],a:[["Пополь и Купа",4.0]],
+  tips:["Мелисса слабее всего до 10-й минуты и сильнее всего после 16-й. Набери преимущество в начале.","Её ультимейт выталкивает ныряющих героев. Заходи после того, как она его потратила."]},
+ ixia:{ph:[1,0,-1],p:[["wanwan",4.3,"Самое большое преимущество: рывками выходит из зоны её ультимейта и убивает."],["claude",2.6,"Влетает и возвращается, пока Иксия стоит на месте во время ультимейта."],["granger",2.3,"Перестреливает её бёрстом на линии."]],
+  t:[["Наталья",3.1],["Кадита",3.0],["Бенедетта",2.9],["Ханзо",2.9]],a:[["Ханаби",2.4],["Мелисса",1.9]],
+  tips:["Иксия сильнее всего до 10-й минуты и проседает после 16-й.","Во время ультимейта она не двигается. Обходи сбоку или сзади."]},
+ irithel:{ph:[0,0,0],p:[["brody",2.7,"Лучший стрелок против Иритель: убивает её одним комбо."],["miya",2.2,"Перестреливает в затяжной драке."],["lesley",2.1,"Достаёт с дистанции, на которую Иритель не дотягивается."]],
+  t:[["Сабер",2.4],["Эйдора",2.2]],a:[["Ванван",2.3]],
+  tips:["Иритель стреляет на ходу, догонять её бесполезно. Лови контролем.","Сабер или Эйдора убивают её одной связкой: проси у команды."]},
+ natan:{ph:[0,0,0],p:[["brody",2.2,"Убивает Натана бёрстом до того, как тот наберёт стаки."],["granger",2.0,"Перестреливает на линии и добивает издалека."]],
+  t:[["Лолита",3.4],["Арлотт",2.4],["Баксия",2.3],["Нолан",2.2]],a:[],
+  tips:["Натан бьёт магическим уроном. Против него помогает «Золотой метеор» или «Щит Афины».","Слабой стадии у него нет. Не давай ему копить стаки на миньонах."]},
+ kimmy:{ph:[1,0,-1],p:[["bruno",null,"Измеренного преимущества у стрелков нет. Бруно убивает её бёрстом и сильнее в поздней игре."],["popol",null,"Купа принимает её поток выстрелов, ловушки не дают ей кайтить."],["irithel",null,"Тоже стреляет на ходу и сильнее в затяжной драке."]],
+  t:[["Карина",3.3],["Лолита",3.2],["Фанни",2.5],["Наталья",2.4],["Арлотт",2.1]],a:[],
+  tips:["Кимми сильнее всего до 10-й минуты и проседает после 16-й.","Ей опасны убийцы: Карина и Фанни добираются до неё вплотную."]},
+ popol:{ph:[0,0,0],p:[["melissa",4.0,"Самое большое преимущество среди стрелков: кукла держит Купу на расстоянии."],["hanabi",2.1,"Щит защищает от ловушек, отскоки бьют и Пополя, и Купу."]],
+  t:[["Кармилла",3.4],["Атлас",3.4],["Ксавьер",3.3],["Марсель",3.2],["Сора",2.7]],a:[["Лесли",2.5]],
+  tips:["Смотри под ноги в кустах: ловушка Пополя обездвиживает.","Сначала убей Купу, без него Пополь заметно слабее."]}
+};
+
+// Запасные объяснения для подбора «по механике» на миду
+const WK={
+ kadita:"Ныряет в волне, уходит от умений и убивает одним комбо.",
+ lunox:"Неуязвимость на ультимейте позволяет пережить прокаст и ответить.",
+ xavier:"Перестреливает с большей дистанции и спокойно держит линию.",
+ yve:"Бьёт издалека и держит врага на расстоянии полем ультимейта.",
+ gord:"Наказывает лучом с дистанции, пока враг стоит на месте."
+};
+const EM={
+ valir:{ph:[0,0,0],p:[["harley",2.1,"Убивает Валира одним комбо издалека и уходит рывком."],["novaria",2.1,"Достаёт снарядом с дистанции, на которую Валир не дотягивается."],["kagura",1.8,"Снимает его контроль зонтиком и переигрывает по подвижности."],["pharsa",1.6,"Бьёт ультимейтом издалека, не заходя в зону огня."]],
+  t:[["Кайя",3.5],["Хелкарт",3.2],["Рафаэла",3.2],["Лолита",3.0],["Матильда",3.0]],a:[["Алиса",3.8]],
+  tips:["Валир в S-тире с винрейтом 54,1% и без слабой стадии. Если бан свободен, подумай о нём.","Не подходи вплотную: огненная стена отталкивает. Сильнее всего он против героев ближнего боя."]},
+ gord:{ph:[-1,1,0],p:[["kadita",null,"Ныряет под его луч и убивает одним комбо: рывка у Горда нет."],["lunox",null],["xavier",null]],
+  t:[["Наталья",3.4],["Хелкарт",2.8],["Линг",2.7],["Матильда",2.3],["Бенедетта",2.2]],a:[["Алиса",1.8]],
+  tips:["Горд слабее всего до 10-й минуты, а пик силы у него с 10-й по 16-ю.","Весь его урон рассчитан на неподвижную цель. Не стой на месте и уходи вбок от луча."]},
+ xavier:{ph:[1,0,-1],p:[["kadita",null],["lunox",null],["yve",null]],
+  t:[["Наталья",4.0],["Лолита",3.9],["Хелкарт",3.2],["Алдос",2.5],["Зилонг",2.4]],a:[],
+  tips:["Ксавьер сильнее всего до 10-й минуты и слабеет после 16-й.","Его умения летят по длинной прямой. Двигайся вбок, а не назад.","Убийцы в лесу работают против него лучше всего: Наталья даёт +4,0 п.п."]},
+ cyclops:{ph:[-1,0,1],p:[["yve",null,"Бьёт с дистанции, на которую шары Циклопа не долетают."],["xavier",null],["gord",null]],
+  t:[["Лолита",9.4],["Эстес",4.0],["Минотавр",2.7],["Атлас",2.5]],a:[],
+  tips:["Циклоп слабее всего до 10-й минуты и сильнее всего после 16-й. Дави линию с начала.","Лолита блокирует его шары щитом и даёт +9,4 п.п. Это самый сильный контрпик на всей странице: проси её в роум."]},
+ kadita:{ph:[0,0,0],p:[["alice",2.1,"Единственный маг с измеренным преимуществом: переживает её комбо и выигрывает затяжной размен."],["lunox",null],["gord",null,"Наказывает лучом в момент, когда она вынырнула из волны."]],
+  t:[["Марсель",3.0],["Ванван",1.9],["Фовиус",1.5]],a:[["Ив",1.7]],
+  tips:["Слабой стадии у Кадиты нет.","В волне она не получает контроль. Оглушай и замедляй сразу после того, как она вынырнула.","Держи «Зимнюю корону» или вспышку под её комбо."]},
+ zetian:{ph:[0,0,0],p:[["valentina",2.2,"Лучший измеренный вариант на мид: крадёт её ультимейт и бьёт им же."],["harith",1.8,"Рывками уходит от умений и добирается до неё вплотную."],["yve",1.7,"Перестреливает с дистанции и держит полем ультимейта."]],
+  t:[["Глу",2.0],["Флорин",2.0]],a:[],
+  tips:["Ультимейт Зетиан достаёт в любую точку карты. С низким здоровьем сразу уходи на базу.","У неё мало здоровья: любой нырок с контролем её убивает."]},
+ cecilion:{ph:[1,0,-1],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Хаябуса",1.7],["Иксия",1.6],["Ханзо",1.6],["Хелкарт",1.4],["Наталья",1.3]],a:[],
+  tips:["По статистике Сесилион сильнее всего до 10-й минуты и проседает после 16-й.","Измеренных контрпиков у него мало и все слабые. Выигрывай позицией: уходи вбок от первого умения."]},
+ kagura:{ph:[1,-1,0],p:[["harith",2.0,"Рывки и щит позволяют пережить её комбо и ответить вплотную."],["odette",1.8,"Перебивает её уроном по области, когда Кагура влетает."]],
+  t:[["Фовиус",2.3],["Фрейя",2.0],["Эсмеральда",1.8]],a:[["Валир",1.7]],
+  tips:["Кагура сильнее всего до 10-й минуты и проседает с 10-й по 16-ю.","Следи за зонтиком: она прыгает к нему и от него. Не стой рядом с зонтом."]},
+ novaria:{ph:[0,0,0],p:[["kadita",null,"Ныряет в волне под её снарядом и убивает одним комбо: рывка у Новарии нет."],["lunox",null],["xavier",null]],
+  t:[["Наталья",3.3],["Линг",2.7],["Глу",2.1],["Алдос",2.0]],a:[["Валир",2.0],["Луо И",1.7]],
+  tips:["Стой за миньонами и двигайся зигзагом: её главный урон идёт от дальнего снаряда по прямой.","Её ультимейт подсвечивает тебя сквозь кусты, засады против неё не работают."]},
+ yve:{ph:[0,0,0],p:[["harley",2.2,"Влетает, убивает её ультимейтом и возвращается к шляпе."],["kadita",1.7,"Ныряет в волне через её поле и убивает комбо."]],
+  t:[["Джой",4.1],["Сабер",2.9],["Фанни",2.8],["Хаябуса",2.7],["Нолан",2.5]],a:[["Алиса",3.1]],
+  tips:["Во время ультимейта Ив не двигается. Это лучший момент, чтобы нырнуть на неё.","Против неё сильны убийцы: Джой даёт +4,1 п.п."]},
+ lunox:{ph:[0,0,0],p:[["odette",2.2,"Единственный маг с измеренным преимуществом против Люнокс."],["gord",null]],
+  t:[["Сабер",2.5],["Руби",2.1],["Эдит",2.1],["Фредрин",2.0]],a:[],
+  tips:["Слабой стадии у Люнокс нет.","Жди, пока она потратит ультимейт с неуязвимостью, и только потом вкладывай урон."]},
+ luoyi:{ph:[0,0,0],p:[["novaria",1.7,"Единственный маг с измеренным преимуществом: достаёт её издалека."],["gord",null],["yve",null]],
+  t:[["Джой",1.9],["Лолита",1.8],["Хелкарт",1.8],["Бенедетта",1.7]],a:[],
+  tips:["Не стойте с союзниками рядом: её метки инь и ян стягивают и оглушают, когда встречаются.","Её ультимейт переносит всю команду. Следи за картой, когда Луо И пропала."]},
+ pharsa:{ph:[0,0,0],p:[["zetian",1.4,"Единственный маг с измеренным преимуществом против Фарсы."],["gord",null],["yve",null]],
+  t:[["Маша",1.9],["Глу",1.9],["Наталья",1.8],["Ханзо",1.8]],a:[["Валир",1.3]],
+  tips:["Во время ультимейта Фарса стоит на месте. Ныряй на неё или выходи из зоны.","У неё мало здоровья, а птица — единственный способ уйти."]},
+ lylia:{ph:[1,0,-1],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Джой",2.6],["Матильда",2.0],["Чичи",1.7],["Чу",1.6],["Кайя",1.6]],a:[["Алиса",1.7]],
+  tips:["Лилия сильнее всего до 10-й минуты и проседает после 16-й.","Не добивай её вполсилы: ультимейт возвращает её назад с прежним здоровьем."]},
+ vexana:{ph:[0,0,0],p:[["alice",2.7,"Лучший измеренный вариант: переживает её прокаст и выигрывает вблизи."],["kadita",null],["lunox",null]],
+  t:[["Марсель",2.3],["Наталья",2.0],["Икс.Борг",1.9],["Бенедетта",1.8]],a:[["Одетта",2.0],["Заск",1.8]],
+  tips:["Уходи вбок от первого умения: страх ведёт тебя под её остальной урон.","Не дерись рядом с её призванным рыцарем."]},
+ valentina:{ph:[1,-1,-1],p:[["odette",2.6,"Единственный маг с измеренным преимуществом против Валентины."]],
+  t:[["Марсель",3.1],["Сабер",2.7],["Минситтар",2.7],["Джонсон",2.7]],a:[["Зетиан",2.0]],
+  tips:["Валентина сильнее всего до 10-й минуты и слабеет дальше. Избегай ранних драк.","Она копирует чужой ультимейт. Чем сильнее ультимейты в твоей команде, тем она опаснее."]},
+ zhask:{ph:[0,0,0],p:[["alice",2.8,"Лучший измеренный маг: влетает и ломает его позицию вокруг турели."],["vexana",1.8,"Страх и урон по области выбивают его из-под турели."]],
+  t:[["Натан",3.2],["Баксия",3.2],["Белерик",3.0],["Эстес",2.5],["Уранус",2.3]],a:[],
+  tips:["Не дерись рядом с его турелью: сначала сломай её или вымани Заска.","Натан на линии золота даёт +3,2 п.п. против него."]},
+ zhuxin:{ph:[0,0,0],p:[["odette",2.5,"Единственный маг с измеренным преимуществом против Чжу Синь."],["gord",null]],
+  t:[["Нолан",2.6],["Дигги",2.4],["Арлотт",2.3],["Хаябуса",2.2]],a:[],
+  tips:["Она сильнее всего против танков и бойцов. Не выстраивайтесь перед ней кучей.","Убийцы добираются до неё: Нолан и Хаябуса."]},
+ eudora:{ph:[0,0,0],p:[["lunox",null,"Неуязвимость на ультимейте поглощает её прокаст целиком."],["kadita",null,"В волне не получает оглушение и убивает её в ответ."],["xavier",null]],
+  t:[["Атлас",2.9],["Маша",2.9],["Баратс",2.2],["Леоморд",2.1]],a:[],
+  tips:["Проверяй кусты умениями: Эйдора убивает из засады одним комбо.","Против неё хорошо работает «Щит Афины»."]},
+ aurora:{ph:[0,0,0],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Инь",2.0],["Бенедетта",1.7],["Гатоткача",1.7],["Белерик",1.4]],a:[["Одетта",2.1]],
+  tips:["Смотри на её заряды: когда пассивка заряжена, следующее умение замораживает.","Заходи сразу после того, как она потратила заморозку."]},
+ nana:{ph:[0,0,0],p:[["xavier",null,"Достаёт её с дистанции, не наступая на Молину."],["yve",null],["gord",null]],
+  t:[["Глу",2.8],["Атлас",2.7],["Хилос",2.0],["Акай",1.9]],a:[["Одетта",2.9]],
+  tips:["Пассивка один раз спасает Нану от смерти. Сначала сбей её, потом вкладывай главный урон.","Не ныряй на неё через Молину: превращение ломает любой заход."]},
+ odette:{ph:[0,0,0],p:[["vale",3.1,"Лучший контрпик на мид: подбрасывает её и сбивает ультимейт."],["nana",2.9,"Молина превращает Одетту и прерывает ультимейт."],["aurora",2.1,"Заморозка останавливает её ультимейт."],["vexana",2.0,"Страх сбивает ультимейт и ведёт её под урон."]],
+  t:[["Гатоткача",3.1],["Альфа",2.6],["Эдит",2.6]],a:[["Валентина",2.6],["Харит",2.4],["Чжу Синь",2.3],["Люнокс",2.2],["Кагура",1.8]],
+  tips:["Весь её урон в ультимейте, и он сбивается любым контролем. Держи контроль под него.","У Одетты больше всего измеренных контрпиков на миду."]},
+ vale:{ph:[-1,0,1],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Халид",2.8],["Глу",2.8],["Атлас",2.3],["Хилос",2.0]],a:[["Одетта",3.1]],
+  tips:["Вейл слабее всего до 10-й минуты и сильнее всего после 16-й. Дави линию с начала.","Уходи вбок от его подброса: без него ультимейт легко избежать."]},
+ harley:{ph:[-1,0,1],p:[["kadita",null],["lunox",null],["gord",null,"Оглушает и сжигает лучом, когда Харли влетел."]],
+  t:[["Лолита",5.2],["Сан",3.0],["Пополь и Купа",2.8],["Глу",2.7],["Роджер",2.6]],a:[["Алиса",2.4],["Ив",2.2],["Валир",2.2]],
+  tips:["Харли слабее всего до 10-й минуты и сильнее всего после 16-й.","Выходи из кольца его ультимейта: урон приходит в конце. Здесь спасает «Зимняя корона»."]}
+};
+
+/*E_GEN*/
+
+// Слепой пик: винрейт за 7 дней, c = кто контрит героя, s = против кого он силён
+const BL={
+ gold:[
+  {id:"bruno",wr:53.92,risk:"На линии его контрит Лесли (+3,2 п.п.).",c:[["Лолита",4.4],["Одетта",2.4],["Аамон",2.3],["Карина",2.1]],s:[["Ванван",3.0]]},
+  {id:"brody",wr:50.04,c:[["Сабер",2.3],["Маша",2.3],["Дигги",2.3],["Баратс",1.9],["Хуфра",1.8]],s:[["Карина",4.0],["Наталья",3.0],["Белерик",2.8],["Иритель",2.7],["Джой",2.2],["Натан",2.2]]},
+  {id:"miya",wr:49.86,c:[["Белерик",3.8],["Гатоткача",2.4],["Халид",1.9],["Хилос",1.7],["Лолита",1.7]],s:[["Сабер",2.9],["Обсидия",2.3],["Москов",2.1],["Иритель",2.1],["Харит",2.1],["Калея",1.6],["Кадита",1.5]]},
+  {id:"layla",wr:49.57,c:[["Атлас",3.7],["Джонсон",2.7],["Сан",2.7],["Хуфра",2.4],["Хилос",2.2],["Грок",1.7]],s:[["Дигги",3.0],["Рафаэла",2.0],["Фовиус",2.0],["Эдит",1.9],["Марсель",1.8]]},
+  {id:"karrie",wr:48.94,c:[["Лолита",3.5],["Аргус",2.9],["Сан",2.8],["Минситтар",2.8],["Наталья",2.5],["Зилонг",2.1],["Хаябуса",2.0],["Гвиневра",1.9]],s:[["Алиса",4.1],["Баксия",3.5],["Эсмеральда",3.3],["Хилос",2.9],["Бальмонд",2.9],["Леоморд",2.8],["Уранус",2.8],["Хильда",2.7],["Фредрин",2.4],["Теризла",2.2]]},
+  {id:"kimmy",wr:48.56,c:[["Карина",3.3],["Лолита",3.2],["Фанни",2.5],["Наталья",2.4],["Арлотт",2.1]],s:[["Сан",3.4],["Хилос",2.7],["Атлас",2.6],["Уранус",2.4],["Хуфра",2.4],["Хильда",2.3],["Минотавр",2.1]]},
+  {id:"granger",wr:42.76,c:[["Фанни",3.5],["Хильда",3.3],["Уранус",2.3],["Акай",1.9],["Джавхед",1.9],["Ланселот",1.7]],s:[["Карина",4.7],["Беатрис",2.4],["Иксия",2.3],["Ив",2.3],["Дигги",2.0]]}
+ ],
+ mid:[
+  {id:"valir",wr:54.10,risk:"На миду его контрят Харли и Новария (по +2,1 п.п.).",c:[["Кайя",3.5],["Хелкарт",3.2],["Рафаэла",3.2],["Лолита",3.0],["Матильда",3.0],["Госсен",2.3]],s:[["Фредрин",4.0],["Алиса",3.8],["Бальмонд",3.5],["Леоморд",3.1],["Баратс",2.8],["Альфа",2.7],["Тамуз",2.7],["Тигрил",2.6],["Теризла",2.5]]},
+  {id:"xavier",wr:52.64,c:[["Наталья",4.0],["Лолита",3.9],["Хелкарт",3.2],["Алдос",2.5],["Зилонг",2.4],["Аамон",2.4],["Госсен",1.6]],s:[["Пополь и Купа",3.3],["Белерик",3.0],["Атлас",2.6],["Глу",2.4],["Марсель",2.3],["Кармилла",2.1],["Теризла",2.0],["И Сун-Син",1.4]]},
+  {id:"gord",wr:52.51,c:[["Наталья",3.4],["Хелкарт",2.8],["Линг",2.7],["Матильда",2.3],["Бенедетта",2.2]],s:[["Баратс",3.4],["Лолита",3.0],["Фредрин",2.7],["Фовиус",2.3],["Алиса",1.8],["Руби",1.7]]},
+  {id:"cyclops",wr:51.74,c:[["Лолита",9.4],["Эстес",4.0],["Минотавр",2.7],["Иксия",2.6],["Атлас",2.5]],s:[["Наталья",5.1],["Ванван",3.4],["Марсель",3.3],["Матильда",3.0],["Джой",2.9],["Акай",2.5],["Бенедетта",2.4],["Чу",2.4],["Алдос",2.3],["Москов",2.0],["Хаябуса",1.7]]},
+  {id:"cecilion",wr:50.84,c:[["Хаябуса",1.7],["Иксия",1.6],["Ханзо",1.6],["Хелкарт",1.4],["Наталья",1.3]],s:[["Лолита",4.2],["Хилос",2.0],["Баратс",1.8],["Дигги",1.8],["Фредрин",1.6]]},
+  {id:"eudora",wr:50.25,c:[["Атлас",2.9],["Маша",2.9],["Баратс",2.2],["Леоморд",2.1],["Аулус",1.6]],s:[["Флорин",2.4],["Хелкарт",2.3],["Иритель",2.2],["Наталья",2.2],["Рафаэла",2.2]]},
+  {id:"vale",wr:50.02,c:[["Халид",2.8],["Глу",2.8],["Атлас",2.3],["Хилос",2.0],["Лапу-Лапу",2.0],["Теризла",1.8]],s:[["Одетта",3.1],["Эстес",2.3],["Мелисса",2.1],["Рафаэла",1.8],["Сильванна",1.6]]},
+  {id:"novaria",wr:49.46,c:[["Наталья",3.3],["Линг",2.7],["Глу",2.1],["Алдос",2.0],["Чип",1.9]],s:[["Дигги",2.5],["Валир",2.0],["Бейн",1.9],["Ханаби",1.8],["Луо И",1.7]]},
+  {id:"lylia",wr:49.10,c:[["Джой",2.6],["Матильда",2.0],["Чичи",1.7],["Чу",1.6],["Кайя",1.6]],s:[["Джонсон",2.2],["Ханаби",2.2],["Альфа",2.1],["Баратс",1.9],["Алиса",1.7]]},
+  {id:"aurora",wr:48.78,c:[["Инь",2.0],["Бенедетта",1.7],["Гатоткача",1.7],["Белерик",1.4],["Ланселот",1.3]],s:[["Лолита",5.8],["Одетта",2.1],["Чип",2.1],["Эстес",1.5],["Фредрин",1.5]]},
+  {id:"harley",wr:48.50,c:[["Лолита",5.2],["Сан",3.0],["Пополь и Купа",2.8],["Глу",2.7],["Роджер",2.6],["Хильда",2.4]],s:[["Алиса",2.4],["Ив",2.2],["Валир",2.2],["Джой",2.0],["Мелисса",2.0],["Суё",1.7]]},
+  {id:"nana",wr:47.13,c:[["Глу",2.8],["Атлас",2.7],["Хилос",2.0],["Акай",1.9],["Пополь и Купа",1.8],["И Сун-Син",1.4]],s:[["Одетта",2.9],["Сабер",2.1],["Лолита",1.9],["Дайрот",1.9],["Мелисса",1.7]]}
+ ],
+/*BL_GEN*/
+};
+
+// Русские названия как в игре + тип значка [название, глиф, цвет]
+const IT={
+ "Swift Boots":["Сапоги спешки","boot","b"],"Tough Boots":["Прочные сапоги","boot","b"],"Magic Shoes":["Магические ботинки","boot","b"],"Arcane Boots":["Сапоги заклинателя","boot","b"],"Demon Boots":["Ботинки демона","boot","b"],
+ "Hunter Strike":["Удар охотника","blade","p"],"Blade of Despair":["Клинок отчаяния","blade","p"],"Endless Battle":["Бесконечная битва","blade","p"],"Demon Hunter Sword":["Меч охотника на демонов","blade","p"],
+ "Malefic Roar":["Злобный рык","pierce","p"],"Malefic Gun":["Губительный пулемёт","pierce","p"],
+ "Sea Halberd":["Трезубец","spear","p"],"Great Dragon Spear":["Копьё Великого дракона","spear","p"],
+ "Berserker's Fury":["Ярость берсерка","bow","p"],"Windtalker":["Говорящий с ветром","wind","p"],"Haas's Claws":["Когти Хааса","claw","p"],
+ "Corrosion Scythe":["Коса коррозии","scythe","p"],"Golden Staff":["Золотой посох","wand","p"],
+ "Wind of Nature":["Ветер природы","wind","d"],"Rose Gold Meteor":["Золотой метеор","shield","d"],"Immortality":["Бессмертие","shield","d"],"Winter Crown":["Зимняя корона","shield","d"],"Athena's Shield":["Щит Афины","shield","d"],
+ "Feather of Heaven":["Райское перо","wand","m"],"Genius Wand":["Палочка гения","wand","m"],"Holy Crystal":["Священный кристалл","gem","m"],"Divine Glaive":["Божественный меч","blade","m"],
+ "Wishing Lantern":["Фонарь желаний","gem","m"],"Starlium Scythe":["Старлиумовая коса","scythe","m"],"Blood Wings":["Кровавые крылья","gem","m"],
+ "Clock of Destiny":["Часы судьбы","gem","m"],"Lightning Truncheon":["Жезл молний","wand","m"],"Glowing Wand":["Пылающий жезл","wand","m"],"Ice Queen Wand":["Жезл снежной королевы","wand","m"],
+ "Enchanted Talisman":["Зачарованный талисман","gem","m"],"Concentrated Energy":["Концентрированная энергия","gem","m"],
+ "Flask of the Oasis":["Фляга Оазиса","gem","m"],"Fleeting Time":["Мимолётное время","gem","m"],"Blade of the Heptaseas":["Клинок семи морей","blade","p"],
+ "Dominance Ice":["Господство льда","shield","d"],"Antique Cuirass":["Древняя кираса","shield","d"],"Guardian Helmet":["Защитный шлем","shield","d"],
+ "War Axe":["Топор войны","blade","p"],"Brute Force Breastplate":["Кираса грубой силы","shield","d"],"Queen's Wings":["Крылья королевы","shield","d"],"Thunder Belt":["Штормовой пояс","shield","d"],
+ "Cursed Helmet":["Проклятый шлем","shield","d"],"Blade Armor":["Шипованная броня","shield","d"],"Oracle":["Оракул","shield","d"],"Radiant Armor":["Сияющая броня","shield","d"]
+};
+const G={
+ boot:"M8 3h5v9l6 3v4H6v-4l2-2z",
+ blade:"M19 3l2 2-10 10-3 1 1-3zM6 15l3 3M4 20l3-3",
+ spear:"M4 20L15 9M13 4h7v7l-3-1-3-3z",
+ bow:"M7 3a12 12 0 0 1 0 18M7 3v18M3 12h17M17 9l3 3-3 3",
+ claw:"M6 20C6 12 8 6 11 3M11 20c0-7 2-12 5-15M16 20c0-5 1-9 4-12",
+ scythe:"M6 21L16 4M16 4c-5-1-9 1-12 5 4-2 8-2 11-1",
+ wand:"M5 20L14 9M17 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1z",
+ gem:"M12 3l7 7-7 11-7-11zM5 10h14",
+ shield:"M12 3l8 3v6c0 5-3 8-8 9-5-1-8-4-8-9V6z",
+ wind:"M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7",
+ pierce:"M3 12h14M13 6l6 6-6 6M21 5v14"
+};
+const SP={Flicker:"Вспышка",Inspire:"Вдохновение",Retribution:"Возмездие"};
+const SIT={
+ gold:[["Wind of Nature","Убийцы и стрелки с физическим уроном ныряют на тебя. Даёт стрелку 2 секунды иммунитета к физ. урону."],
+  ["Sea Halberd","У врага Эстес, Флорин или герои с сильным вампиризмом. Режет лечение."],
+  ["Malefic Roar","Два и больше танков набирают броню. Бери третьим-четвёртым предметом. Вариант с дальностью: «Губительный пулемёт»."],
+  ["Rose Gold Meteor","Тебя убивают маги за одну прокастовку. Ставь вместо последнего предмета урона."],
+  ["Immortality","Игра затянулась за 18 минут. Продай ботинки и купи его шестым слотом."]],
+ mid:[["Winter Crown","На тебя ныряют убийцы. Активируй, чтобы на 2 секунды стать неуязвимым и переждать их прокаст."],
+  ["Athena's Shield","Вражеский маг убивает тебя одной прокастовкой. Ставь вместо последнего предмета урона."],
+  ["Divine Glaive","Враги собирают магическую защиту. Бери его раньше, третьим-четвёртым предметом."],
+  ["Ice Queen Wand","Врагов трудно догнать или удержать. Умения начинают замедлять."],
+  ["Immortality","Игра затянулась за 18 минут. Купи шестым слотом вместо ботинок."]],
+ roam:[["Dominance Ice","У врага много лечения или стрелки с высокой скоростью атаки. Режет и то и другое."],
+  ["Athena's Shield","Вражеские маги убивают прокастом. Бери вторым-третьим предметом."],
+  ["Antique Cuirass","Основной урон врага физический и идёт от умений."],
+  ["Blade Armor","У врага стрелки с критом: возвращает им часть урона."],
+  ["Radiant Armor","Маг бьёт постоянным уроном, а не одной прокастовкой."],
+  ["Immortality","Последним слотом, чтобы пережить первый заход в поздней игре."]],
+ exp:[["Sea Halberd","Соперник на линии лечится от урона или у врага есть лекарь. Режет лечение."],
+  ["Dominance Ice","Против героев со скоростью атаки и лечением: Аргус, Сан, Маша."],
+  ["Athena's Shield","Вражеские маги убивают прокастом."],
+  ["Radiant Armor","Маг бьёт постоянным уроном, а не одной прокастовкой."],
+  ["Brute Force Breastplate","Затяжные драки: каждое попадание умением даёт защиту и скорость."],
+  ["Immortality","Последним слотом, чтобы пережить первый заход в поздней игре."]],
+ jungle:[["Malefic Roar","Два и больше танков набирают броню. Бери третьим предметом."],
+  ["Sea Halberd","У врага Эстес, Флорин или герои с сильным восстановлением."],
+  ["Winter Crown","Тебя ждут с контролем после захода. Активируй, чтобы переждать прокаст."],
+  ["Athena's Shield","Вражеский маг убивает тебя до того, как ты добрался до цели."],
+  ["Immortality","Последним слотом: позволяет ошибиться один раз в поздней игре."]]
+};
+const LANES={
+ gold:{title:"линии золота",order:ORDER_G,E:EG,def:"brody"},
+ mid:{title:"мида",order:ORDER_M,E:EM,def:"valir"},
+ roam:{title:"роума",order:ORDER_R,E:ER,def:"marcel"},
+ exp:{title:"линии опыта",order:ORDER_X,E:EX,def:"masha"},
+ jungle:{title:"леса",order:ORDER_J,E:EJ,def:"ling"}
+};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=n=>n.toFixed(1).replace(".",",");
+const fmt=n=>"+"+num(n)+" п.п.";
+const sgn=n=>(n>=0?"+":"−")+num(Math.abs(n));
+const ico=en=>{const t=IT[en];return `<span class="ico ${t[2]}" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${G[t[1]]}"/></svg></span>`;};
+const ava=(id,big)=>{const ru=H[id][0];let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;
+ const ab=id==="popol"?"ПК":id==="luoyi"?"ЛИ":id==="zhuxin"?"ЧС":ru.slice(0,2);
+ return `<span class="ava${big?" big":""}" style="background:hsl(${h} 42% 38%)" aria-hidden="true">${ab}</span>`;};
+
+const st={lane:"gold",mode:"known",enemy:{gold:"brody",mid:"valir",roam:"marcel",exp:"masha",jungle:"ling"},pick:0,sel:{gold:new Set(),mid:new Set(),roam:new Set(),exp:new Set(),jungle:new Set()},bpick:0};
+
+function buildBlock(id){
+  const b=B[id];
+  return `<div><h2 class="sp">Закуп на всю игру: ${esc(H[id][0])}</h2>
+      <ol class="build">${b.i.map(x=>`<li>${ico(x)}<span>${esc(IT[x][0])}</span></li>`).join("")}</ol></div>
+    <div class="meta"><span>Заклинание: <b>${esc(SP[b.s])}</b></span>${b.r?`<span>${esc(b.rk||"Благословение роума")}: <b>${esc(b.r)}</b></span>`:""}</div>
+    <p class="note">${esc(b.n)}</p>`;
+}
+
+function drawGrid(){
+  const L=LANES[st.lane], q=$("#q").value.trim().toLowerCase();
+  let shown=0;
+  $("#grid").innerHTML=L.order.map(id=>{
+    const [ru,en]=H[id];
+    if(q && !ru.toLowerCase().includes(q) && !en.toLowerCase().includes(q)) return "";
+    shown++;
+    return `<button class="chip" type="button" data-id="${id}" aria-pressed="${id===st.enemy[st.lane]}">${ava(id)}<span>${esc(ru)}<small>${esc(en)}</small></span></button>`;
+  }).join("");
+  $("#empty").hidden=shown>0;
+}
+
+function phaseBox(v,label,time){
+  const cls=v>0?"hi":v<0?"lo":"";
+  const txt=v>0?"сильный":v<0?"слабый":"ровно";
+  return `<div class="${cls}"><b>${label}</b>${time}<br>${txt}</div>`;
+}
+
+function drawKnown(){
+  const enemy=st.enemy[st.lane], d=LANES[st.lane].E[enemy], ru=H[enemy][0];
+  if(st.pick>=d.p.length) st.pick=0;
+  const [pid,edge,w,kind]=d.p[st.pick]; const why=w||WK[pid]||"";
+  const tag=edge!=null?`<span class="tag m">${fmt(edge)} к винрейту</span>`:`<span class="tag k">${kind==="wr"?"по винрейту":"по механике"}</span>`;
+  const alts=d.p.length>1?`<div><h2 class="sp">Варианты</h2><div class="alts">${d.p.map((x,i)=>
+    `<button class="alt" type="button" data-i="${i}" aria-pressed="${i===st.pick}">${ava(x[0])}${esc(H[x[0]][0])}<span class="e">${x[1]!=null?fmt(x[1]):x[3]==="wr"?"винр.":"мех."}</span></button>`).join("")}</div></div>`:"";
+  const avoid=d.a.length?`<div><h2 class="sp">Не бери против него</h2><div class="rows">${d.a.map(x=>`<span class="pill bad">${esc(x[0])}<i>−${num(x[1])}</i></span>`).join("")}</div></div>`:"";
+  const flat=d.ph.every(v=>v===0);
+  $("#result").innerHTML=`
+    <div class="versus">Против: <b>${esc(ru)}</b></div>
+    <div class="verdict">${ava(pid,true)}<span class="name">Бери: ${esc(H[pid][0])}</span>${tag}</div>
+    <p class="why">${esc(why)}</p>
+    ${alts}
+    ${buildBlock(pid)}
+    <div><h2 class="sp">Когда ${esc(ru)} опасен</h2>
+      ${flat?`<p class="note">Заметной разницы между стадиями игры нет.</p>`:`<div class="phase">${phaseBox(d.ph[0],"Начало","0–10 мин")}${phaseBox(d.ph[1],"Середина","10–16 мин")}${phaseBox(d.ph[2],"Поздняя","16+ мин")}</div>`}</div>
+    <div><h2 class="sp">Как играть</h2><ul class="plain">${d.tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+    <div><h2 class="sp">Попроси у команды</h2><div class="rows">${d.t.map(x=>`<span class="pill">${esc(x[0])}<i>${fmt(x[1])}</i></span>`).join("")}</div></div>
+    ${avoid}`;
+}
+
+function poolNames(){
+  const s=new Set();
+  for(const c of BL[st.lane]){c.c.forEach(x=>s.add(x[0]));c.s.forEach(x=>s.add(x[0]));}
+  return [...s].sort((a,b)=>a.localeCompare(b,"ru"));
+}
+function drawPool(){
+  const q=$("#q2").value.trim().toLowerCase(), sel=st.sel[st.lane];
+  const names=poolNames().filter(n=>!q||n.toLowerCase().includes(q));
+  $("#pool").innerHTML=names.length?names.map(n=>`<button class="tog" type="button" data-n="${esc(n)}" aria-pressed="${sel.has(n)}">${esc(n)}</button>`).join("")
+    :`<span class="empty">По этому герою нет статистики против героев из списка. Он не влияет на оценку.</span>`;
+  $("#selrow").innerHTML=sel.size?`<span>Отмечено: ${sel.size}</span><button class="link" type="button" id="clr">Сбросить</button>`:"";
+}
+function rank(){
+  const sel=st.sel[st.lane];
+  return BL[st.lane].map(c=>{
+    let sc=c.wr-50; const up=[],dn=[];
+    for(const [n,e] of c.s) if(sel.has(n)){sc+=e;up.push([n,e]);}
+    for(const [n,e] of c.c) if(sel.has(n)){sc-=e;dn.push([n,e]);}
+    return {c,sc,up,dn};
+  }).sort((a,b)=>b.sc-a.sc);
+}
+function drawBlind(){
+  const sel=st.sel[st.lane], r=rank();
+  if(st.bpick>=Math.min(r.length,12)) st.bpick=0;
+  const x=r[st.bpick], id=x.c.id, any=sel.size>0;
+  const tag=any?`<span class="tag ${x.sc>=0?"m":"k"}">оценка ${sgn(x.sc)}</span>`:`<span class="tag k">винрейт ${num(x.c.wr)}%</span>`;
+  const lines=[`<li class="${x.c.wr>=50?"up":"dn"}"><b>${sgn(x.c.wr-50)}</b><span>Винрейт ${num(x.c.wr)}% за 7 дней, все ранги</span></li>`]
+    .concat(x.up.map(([n,e])=>`<li class="up"><b>+${num(e)}</b><span>Силён против: ${esc(n)}</span></li>`))
+    .concat(x.dn.map(([n,e])=>`<li class="dn"><b>−${num(e)}</b><span>Его контрит: ${esc(n)}</span></li>`));
+  const noHit=any&&!x.up.length&&!x.dn.length?`<p class="note">По отмеченным врагам у этого героя нет измеренных матчапов, оценка равна винрейту.</p>`:"";
+  $("#result").innerHTML=`
+    <div class="versus">Слепой пик на <b>${{gold:"линию золота",mid:"мид",roam:"роум",exp:"линию опыта",jungle:"лес"}[st.lane]}</b>${any?`, у врага отмечено: <b>${[...sel].map(esc).join(", ")}</b>`:""}</div>
+    <div class="verdict">${ava(id,true)}<span class="name">Бери: ${esc(H[id][0])}</span>${tag}</div>
+    ${x.c.risk?`<p class="why"><span class="tag w">риск</span> ${esc(x.c.risk)} Бери, если вражеский герой этой линии уже не они.</p>`:(st.lane!=="gold"&&st.lane!=="mid")?`<p class="why">Здесь в рейтинге все герои линии. Отмечай открытых врагов, и рейтинг пересчитается под их состав.</p>`:`<p class="why">На своей линии у этого героя нет измеренных контрпиков, поэтому его можно брать, не видя соперника.</p>`}
+    <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.join("")}</ul>${noHit}</div>
+    <div><h2 class="sp">Рейтинг для этого состава</h2><div class="alts">${r.slice(0,12).map((y,i)=>
+      `<button class="alt" type="button" data-b="${i}" aria-pressed="${i===st.bpick}">${ava(y.c.id)}${esc(H[y.c.id][0])}<span class="e">${sgn(y.sc)}</span></button>`).join("")}</div></div>
+    ${buildBlock(id)}
+    <div><h2 class="sp">Кого опасаться и банить</h2><div class="rows">${x.c.c.map(y=>`<span class="pill bad">${esc(y[0])}<i>−${num(y[1])}</i></span>`).join("")}</div></div>
+    <div><h2 class="sp">Против кого он силён</h2><div class="rows">${x.c.s.map(y=>`<span class="pill">${esc(y[0])}<i>+${num(y[1])}</i></span>`).join("")}</div></div>`;
+}
+
+function setHash(){
+  const h=st.lane+"-"+(st.mode==="blind"?"blind":st.enemy[st.lane]);
+  try{ if(location.hash!=="#"+h) history.replaceState(null,"","#"+h); }catch(e){ try{location.hash=h;}catch(_){} }
+}
+function draw(scroll){
+  document.querySelectorAll("[data-lane]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lane===st.lane));
+  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===st.mode));
+  $("#laneTitle").textContent=LANES[st.lane].title;
+  const blind=st.mode==="blind";
+  $("#pickKnown").hidden=blind; $("#pickBlind").hidden=!blind;
+  if(blind){drawPool();drawBlind();}else{drawGrid();drawKnown();}
+  $("#sit").innerHTML=SIT[st.lane].map(([en,t])=>`<div>${ico(en)}<p><b>${esc(IT[en][0])}</b>${esc(t)}</p></div>`).join("");
+  setHash();
+  if(scroll){
+    const smooth=!matchMedia("(prefers-reduced-motion: reduce)").matches;
+    $("#result").scrollIntoView({behavior:smooth?"smooth":"auto",block:"start"});
+  }
+}
+function fromHash(){
+  const h=location.hash.slice(1); if(!h) return false;
+  if(EG[h]){st.lane="gold";st.mode="known";st.enemy.gold=h;return true;}
+  const i=h.indexOf("-"); if(i<0) return false;
+  const lane=h.slice(0,i), rest=h.slice(i+1);
+  if(!LANES[lane]) return false;
+  if(rest==="blind"){st.lane=lane;st.mode="blind";return true;}
+  if(LANES[lane].E[rest]){st.lane=lane;st.mode="known";st.enemy[lane]=rest;return true;}
+  return false;
+}
+
+document.querySelector(".switches").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.lane){st.lane=b.dataset.lane;st.pick=0;st.bpick=0;$("#q").value="";$("#q2").value="";}
+  if(b.dataset.mode){st.mode=b.dataset.mode;}
+  draw(false);
+});
+$("#grid").addEventListener("click",e=>{const b=e.target.closest(".chip"); if(b){st.enemy[st.lane]=b.dataset.id;st.pick=0;draw(true);}});
+$("#pool").addEventListener("click",e=>{const b=e.target.closest(".tog"); if(!b) return;
+  const s=st.sel[st.lane], n=b.dataset.n; s.has(n)?s.delete(n):s.add(n); st.bpick=0; drawPool(); drawBlind();});
+$("#selrow").addEventListener("click",e=>{if(e.target.id==="clr"){st.sel[st.lane].clear();st.bpick=0;drawPool();drawBlind();}});
+$("#result").addEventListener("click",e=>{
+  const a=e.target.closest(".alt"); if(!a) return;
+  if(a.dataset.i!=null){st.pick=+a.dataset.i;drawKnown();}
+  if(a.dataset.b!=null){st.bpick=+a.dataset.b;drawBlind();}
+});
+$("#q").addEventListener("input",drawGrid);
+$("#q2").addEventListener("input",drawPool);
+addEventListener("hashchange",()=>{if(fromHash()){st.pick=0;draw(false);}});
+fromHash(); draw(false);
+</script>
+</body>
+</html>

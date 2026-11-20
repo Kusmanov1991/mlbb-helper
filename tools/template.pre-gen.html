@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Контрпики по всем линиям</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: draft-room sheet. Lane and mode switches on top, picker, one verdict card.
+   Everything reachable with one thumb during the pick timer. */
+:root{
+  --bg:#f3f1ea;--panel:#ffffff;--panel-2:#ebe8de;--ink:#1b2130;--muted:#5d6577;--line:#d6d2c4;
+  --gold:#a56a00;--gold-soft:#f6e6bf;--good:#1f7a4d;--good-soft:#dcefe4;--bad:#b23a2e;--bad-soft:#f6dedb;--magic:#5a4fb3;
+  --display:"Russo One","Arial Black",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101522;--panel:#1a2133;--panel-2:#232c42;--ink:#eef0f6;--muted:#9aa4ba;--line:#2f3a54;
+    --gold:#f0b83c;--gold-soft:#3a3018;--good:#5fd39a;--good-soft:#173527;--bad:#ff8a7c;--bad-soft:#3d1f1c;--magic:#a99cff;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101522;--panel:#1a2133;--panel-2:#232c42;--ink:#eef0f6;--muted:#9aa4ba;--line:#2f3a54;
+  --gold:#f0b83c;--gold-soft:#3a3018;--good:#5fd39a;--good-soft:#173527;--bad:#ff8a7c;--bad-soft:#3d1f1c;--magic:#a99cff;color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:400;font-size:26px;line-height:1.15;margin:0;text-wrap:balance}
+h1 span{color:var(--gold)}
+.stamp{color:var(--muted);font-size:13px}
+h2{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+h2.sp{margin-bottom:8px}
+.switches{display:flex;flex-direction:column;gap:8px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--panel-2);padding:4px;border-radius:12px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:15px;padding:10px 4px;border-radius:9px;cursor:pointer;min-height:44px}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.seg.lane button[aria-pressed="true"]{background:var(--gold);color:#16130a;box-shadow:none}
+.picker{display:flex;flex-direction:column;gap:10px}
+.hint{margin:0;font-size:14px;color:var(--muted)}
+input[type=search]{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit}
+input:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:600;font-size:14px;padding:8px;border-radius:10px;cursor:pointer;min-height:44px;line-height:1.2;display:flex;align-items:center;gap:8px;text-align:left}
+.chip small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#16130a}
+.chip[aria-pressed="true"] small{color:#3a2c08}
+.pool{display:flex;flex-wrap:wrap;gap:6px;max-height:232px;overflow-y:auto;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.tog{appearance:none;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:8px 12px;border-radius:999px;cursor:pointer;min-height:40px}
+.tog[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.selrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.link{appearance:none;border:0;background:none;color:var(--gold);font:inherit;font-weight:600;cursor:pointer;padding:6px 0;text-decoration:underline}
+.empty{color:var(--muted);font-size:14px;padding:6px 2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.versus{font-size:14px;color:var(--muted)}
+.versus b{color:var(--ink)}
+.verdict{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.verdict .name{font-family:var(--display);font-size:30px;line-height:1.1;color:var(--gold)}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag.m{background:var(--good-soft);color:var(--good)}
+.tag.k{background:var(--panel-2);color:var(--muted)}
+.tag.w{background:var(--gold-soft);color:var(--gold)}
+.why{margin:0;font-size:15px}
+.alts{display:flex;flex-wrap:wrap;gap:8px}
+.alt{appearance:none;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font:inherit;font-size:14px;font-weight:600;border-radius:999px;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px}
+.alt[aria-pressed="true"]{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.alt span.e{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+ol.build{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;counter-reset:b}
+ol.build li{counter-increment:b;display:flex;align-items:center;gap:10px;background:var(--panel-2);border-radius:10px;padding:9px 12px;font-weight:600;font-size:15px;line-height:1.2}
+ol.build li::before{content:counter(b);flex:none;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#16130a;font-family:var(--display);font-size:13px;display:grid;place-items:center}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+.note{font-size:13px;color:var(--muted);margin:0}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+ul.pm{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px}
+ul.pm li{display:flex;gap:8px;align-items:baseline}
+ul.pm b{flex:none;width:58px;font-variant-numeric:tabular-nums}
+ul.pm .up b{color:var(--good)} ul.pm .dn b{color:var(--bad)}
+.rows{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--panel-2);font-variant-numeric:tabular-nums}
+.pill i{font-style:normal;font-weight:500;color:var(--muted);margin-left:4px}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.bad i{color:inherit;opacity:.8}
+.phase{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.phase div{border-radius:8px;padding:7px 6px;text-align:center;font-size:12px;background:var(--panel-2);color:var(--muted)}
+.phase div b{display:block;font-size:13px;color:var(--ink)}
+.phase .hi{background:var(--bad-soft)}.phase .hi b{color:var(--bad)}
+.phase .lo{background:var(--good-soft)}.phase .lo b{color:var(--good)}
+.sit{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.sit div{background:var(--panel-2);border-radius:10px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
+.sit b{display:block}.sit p{margin:0}
+.ava{flex:none;display:inline-grid;place-items:center;border-radius:50%;color:#fff;font-family:var(--display);font-weight:400;width:28px;height:28px;font-size:11px;letter-spacing:.02em}
+.ava.big{width:52px;height:52px;font-size:19px}
+.ico{flex:none;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line)}
+.ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ico.p{color:var(--bad)}.ico.m{color:var(--magic)}.ico.d{color:var(--good)}.ico.b{color:var(--gold)}
+footer{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+footer a{color:var(--gold)}
+@media (prefers-reduced-motion:no-preference){.chip,.alt,.tog,.seg button{transition:background-color .12s,border-color .12s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Контрпики <span id="laneTitle">линии золота</span></h1>
+    <div class="stamp">Mobile Legends · сезон 42 · патч 2.2.23 · данные матчапов на 15–16 ноября 2026</div>
+  </header>
+
+  <div class="switches">
+    <div class="seg lane" role="group" aria-label="Линия">
+      <button type="button" data-lane="gold">Золото</button>
+      <button type="button" data-lane="mid">Мид</button>
+      <button type="button" data-lane="roam">Роум</button>
+      <button type="button" data-lane="exp">Опыт</button>
+      <button type="button" data-lane="jungle">Лес</button>
+    </div>
+    <div class="seg" role="group" aria-label="Режим">
+      <button type="button" data-mode="known">Знаю, кто на линии</button>
+      <button type="button" data-mode="blind">Пикаю вслепую</button>
+    </div>
+  </div>
+
+  <section class="picker" id="pickKnown" aria-label="Выбор вражеского героя">
+    <h2>Кого взял враг</h2>
+    <input id="q" type="search" placeholder="Поиск героя" autocomplete="off" aria-label="Поиск героя">
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>Такого героя в списке нет. Попробуй другое написание.</div>
+  </section>
+
+  <section class="picker" id="pickBlind" aria-label="Уже открытые враги" hidden>
+    <h2>Кого у врага уже видно</h2>
+    <p class="hint">Отметь открытых врагов с любых линий. Можно никого не отмечать: тогда порядок идёт по винрейту.</p>
+    <input id="q2" type="search" placeholder="Поиск: Наталья, Лолита…" autocomplete="off" aria-label="Поиск открытого врага">
+    <div class="pool" id="pool"></div>
+    <div class="selrow" id="selrow"></div>
+  </section>
+
+  <section class="card" id="result" aria-live="polite"></section>
+
+  <section class="card">
+    <h2>Что менять в сборке по ситуации</h2>
+    <div class="sit" id="sit"></div>
+  </section>
+
+  <footer>
+    <div><b>Откуда данные.</b> Цифры «+N п.п.» показывают, насколько винрейт героя вырастает в этом матчапе по ранговым играм (mlbbhub, патч 2.2.23; для части героев последние данные от патча 2.2.16a). Метка «по механике» значит, что измеренного преимущества на этой линии нет и герой подобран по набору умений. Метка «по винрейту» значит, что измеренного контрпика на этой линии нет и показан сильный герой патча.</div>
+    <div><b>Слепой пик.</b> На золоте и миду в списке герои, против которых на их линии почти нет измеренных контрпиков, на роуме, линии опыта и в лесу все герои линии (показаны 12 лучших под состав). Оценка = винрейт героя за 7 дней минус 50, плюс его преимущества и минус его слабости против отмеченных врагов. Учитываются только матчапы, по которым есть статистика, поэтому отметить можно не любого героя.</div>
+    <div><b>Сборки.</b> Базовый порядок закупки на всю игру, названия как в русской версии. Сборки Мии и Беатрис сверены с гайдами сезона 42. На роуме, линии опыта и в лесу сборки шаблонные, одна на тип героя: обязательно сверяй с рекомендуемыми в игре.</div>
+    <div><b>Значки.</b> Кружки с буквами и значки предметов нарисованы для этой страницы: красный — физический урон, фиолетовый — магия, зелёный — защита, золотой — ботинки. Это не игровые иконки.</div>
+    <div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a></div>
+  </footer>
+</div>
+
+<script>
+const H={
+ brody:["Броуди","Brody"],lesley:["Лесли","Lesley"],obsidia:["Обсидия","Obsidia"],hanabi:["Ханаби","Hanabi"],
+ claude:["Клауд","Claude"],miya:["Мия","Miya"],layla:["Лейла","Layla"],granger:["Грейнджер","Granger"],
+ wanwan:["Ванван","Wanwan"],karrie:["Кэрри","Karrie"],beatrix:["Беатрис","Beatrix"],moskov:["Москов","Moskov"],
+ clint:["Клинт","Clint"],bruno:["Бруно","Bruno"],melissa:["Мелисса","Melissa"],ixia:["Иксия","Ixia"],
+ irithel:["Иритель","Irithel"],natan:["Натан","Natan"],kimmy:["Кимми","Kimmy"],popol:["Пополь и Купа","Popol and Kupa"],
+ harith:["Харит","Harith"],
+ valir:["Валир","Valir"],gord:["Горд","Gord"],xavier:["Ксавьер","Xavier"],cyclops:["Циклоп","Cyclops"],
+ kadita:["Кадита","Kadita"],zetian:["Зетиан","Zetian"],cecilion:["Сесилион","Cecilion"],kagura:["Кагура","Kagura"],
+ yve:["Ив","Yve"],lunox:["Люнокс","Lunox"],luoyi:["Луо И","Luo Yi"],pharsa:["Фарса","Pharsa"],lylia:["Лилия","Lylia"],
+ vexana:["Вексана","Vexana"],valentina:["Валентина","Valentina"],zhask:["Заск","Zhask"],zhuxin:["Чжу Синь","Zhuxin"],
+ eudora:["Эйдора","Eudora"],aurora:["Аврора","Aurora"],nana:["Нана","Nana"],odette:["Одетта","Odette"],
+ vale:["Вейл","Vale"],harley:["Харли","Harley"],novaria:["Новария","Novaria"],alice:["Алиса","Alice"],
+ marcel:["Марсель","Marcel"],khufra:["Хуфра","Khufra"],rafaela:["Рафаэла","Rafaela"],diggie:["Дигги","Diggie"],floryn:["Флорин","Floryn"],minotaur:["Минотавр","Minotaur"],carmilla:["Кармилла","Carmilla"],lolita:["Лолита","Lolita"],gloo:["Глу","Gloo"],estes:["Эстес","Estes"],belerick:["Белерик","Belerick"],atlas:["Атлас","Atlas"],natalia:["Наталья","Natalia"],faramis:["Фарамис","Faramis"],kalea:["Калея","Kalea"],angela:["Ангела","Angela"],kaja:["Кайя","Kaja"],johnson:["Джонсон","Johnson"],hylos:["Хилос","Hylos"],chip:["Чип","Chip"],grock:["Грок","Grock"],tigreal:["Тигрил","Tigreal"],mathilda:["Матильда","Mathilda"],franco:["Франко","Franco"],
+ masha:["Маша","Masha"],argus:["Аргус","Argus"],sun:["Сан","Sun"],aulus:["Аулус","Aulus"],edith:["Эдит","Edith"],guinevere:["Гвиневра","Guinevere"],terizla:["Теризла","Terizla"],badang:["Баданг","Badang"],khaleed:["Халид","Khaleed"],paquito:["Пакито","Paquito"],xborg:["Икс.Борг","X.Borg"],uranus:["Уранус","Uranus"],cici:["Чичи","Cici"],dyrroth:["Дайрот","Dyrroth"],yuzhong:["Ю Чжун","Yu Zhong"],thamuz:["Тамуз","Thamuz"],ruby:["Руби","Ruby"],lapulapu:["Лапу-Лапу","Lapu-Lapu"],phoveus:["Фовиус","Phoveus"],arlott:["Арлотт","Arlott"],esmeralda:["Эсмеральда","Esmeralda"],gatotkaca:["Гатоткача","Gatotkaca"],chou:["Чу","Chou"],
+ ling:["Линг","Ling"],barats:["Баратс","Barats"],fredrinn:["Фредрин","Fredrinn"],saber:["Сабер","Saber"],aamon:["Аамон","Aamon"],akai:["Акай","Akai"],hanzo:["Ханзо","Hanzo"],julian:["Джулиан","Julian"],leomord:["Леоморд","Leomord"],nolan:["Нолан","Nolan"],suyou:["Суё","Suyou"],yin:["Инь","Yin"],yisunshin:["И Сун-Син","Yi Sun-shin"],alpha:["Альфа","Alpha"],karina:["Карина","Karina"],joy:["Джой","Joy"],gusion:["Госсен","Gusion"],roger:["Роджер","Roger"],hayabusa:["Хаябуса","Hayabusa"],helcurt:["Хелкарт","Helcurt"],martis:["Мартис","Martis"],baxia:["Баксия","Baxia"],lancelot:["Ланселот","Lancelot"],fanny:["Фанни","Fanny"]
+};
+const ORDER_G=["brody","lesley","obsidia","hanabi","claude","miya","layla","granger","wanwan","karrie","beatrix","moskov","clint","bruno","melissa","ixia","irithel","natan","kimmy","popol"];
+const ORDER_R=["marcel", "khufra", "rafaela", "diggie", "floryn", "minotaur", "carmilla", "lolita", "gloo", "estes", "belerick", "atlas", "natalia", "faramis", "kalea", "angela", "kaja", "johnson", "hylos", "chip", "grock", "tigreal", "mathilda", "franco"];
+const ORDER_X=["masha", "argus", "sun", "aulus", "edith", "guinevere", "alice", "terizla", "badang", "khaleed", "paquito", "xborg", "uranus", "cici", "dyrroth", "yuzhong", "thamuz", "ruby", "lapulapu", "phoveus", "arlott", "esmeralda", "gatotkaca", "chou"];
+const ORDER_J=["ling", "barats", "fredrinn", "saber", "aamon", "akai", "hanzo", "julian", "leomord", "nolan", "suyou", "yin", "yisunshin", "alpha", "karina", "joy", "gusion", "roger", "hayabusa", "helcurt", "martis", "baxia", "lancelot", "fanny"];
+const ORDER_M=["valir","gord","xavier","cyclops","kadita","zetian","cecilion","kagura","novaria","yve","lunox","luoyi","pharsa","lylia","vexana","valentina","zhask","zhuxin","eudora","aurora","nana","odette","vale","harley"];
+
+// Сборка героя, которого берёшь ты: 6 предметов по порядку, заклинание, подсказка
+const MAGE=["Arcane Boots","Clock of Destiny","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive"];
+const B={
+ popol:{i:["Swift Boots","Hunter Strike","Blade of Despair","Malefic Roar","Sea Halberd","Wind of Nature"],s:"Flicker",n:"Ставь ловушки в кустах у линии и держи Купу впереди себя."},
+ clint:{i:["Magic Shoes","Endless Battle","Berserker's Fury","Great Dragon Spear","Malefic Roar","Blade of Despair"],s:"Flicker",n:"После каждого умения делай автоатаку: усиленный выстрел бьёт дальше обычного."},
+ bruno:{i:["Swift Boots","Berserker's Fury","Haas's Claws","Great Dragon Spear","Malefic Roar","Blade of Despair"],s:"Flicker",n:"Крит в первую очередь. Подбирай мяч после каждого удара."},
+ brody:{i:["Tough Boots","Hunter Strike","Blade of Despair","Malefic Roar","Rose Gold Meteor","Wind of Nature"],s:"Flicker",n:"Накопи 4 метки автоатаками и только потом жми ультимейт."},
+ miya:{i:["Swift Boots","Windtalker","Berserker's Fury","Haas's Claws","Malefic Roar","Blade of Despair"],s:"Inspire",n:"Сборка сверена с гайдом сезона 42. Последний слот меняй на «Ветер природы», если на тебя ныряют."},
+ beatrix:{i:["Swift Boots","Blade of Despair","Hunter Strike","Haas's Claws","Sea Halberd","Malefic Gun"],s:"Flicker",n:"Сборка сверена с гайдом сезона 42. На линии держи снайперку, в драке переключайся на дробовик."},
+ wanwan:{i:["Swift Boots","Corrosion Scythe","Demon Hunter Sword","Golden Staff","Wind of Nature","Malefic Roar"],s:"Inspire",n:"Сбей все слабые точки цели, чтобы открыть ультимейт."},
+ ixia:{i:["Swift Boots","Hunter Strike","Endless Battle","Blade of Despair","Malefic Roar","Wind of Nature"],s:"Flicker",n:"Ультимейт включай из-за спины команды: во время него ты не двигаешься."},
+ lesley:{i:["Swift Boots","Berserker's Fury","Haas's Claws","Blade of Despair","Malefic Roar","Great Dragon Spear"],s:"Flicker",n:"Стреляй из маскировки с максимальной дистанции и не подходи ближе."},
+ natan:{i:["Arcane Boots","Feather of Heaven","Genius Wand","Holy Crystal","Divine Glaive","Wishing Lantern"],s:"Flicker",n:"Сборка на магический урон. Копи стаки пассивки перед дракой."},
+ irithel:{i:["Swift Boots","Berserker's Fury","Windtalker","Haas's Claws","Malefic Roar","Blade of Despair"],s:"Flicker",n:"Стреляй на ходу и не останавливайся: это твоё главное преимущество."},
+ granger:{i:["Magic Shoes","Hunter Strike","Blade of Despair","Endless Battle","Malefic Roar","Great Dragon Spear"],s:"Flicker",n:"Шестая пуля в обойме критует. Добивай ультимейтом издалека."},
+ moskov:{i:["Swift Boots","Corrosion Scythe","Demon Hunter Sword","Golden Staff","Malefic Roar","Wind of Nature"],s:"Inspire",n:"Вставай так, чтобы копьё пробивало врага и миньонов за ним."},
+ hanabi:{i:["Swift Boots","Corrosion Scythe","Demon Hunter Sword","Golden Staff","Malefic Roar","Blade of Despair"],s:"Inspire",n:"Дерись рядом с миньонами: отскоки сюрикенов достают врага за ними."},
+ harith:{i:["Magic Shoes","Starlium Scythe","Holy Crystal","Genius Wand","Blood Wings","Winter Crown"],s:"Flicker",n:"Маг на линии золота. Дерись внутри зоны ультимейта, там рывок откатывается быстрее."},
+ claude:{i:["Swift Boots","Demon Hunter Sword","Golden Staff","Corrosion Scythe","Malefic Roar","Wind of Nature"],s:"Flicker",n:"Оставь Декстера как точку возврата, влетай с ультимейтом и возвращайся."},
+ melissa:{i:["Swift Boots","Windtalker","Berserker's Fury","Haas's Claws","Malefic Roar","Great Dragon Spear"],s:"Flicker",n:"Ультимейт выталкивает ныряющих героев, держи его для защиты."},
+ layla:{i:["Swift Boots","Berserker's Fury","Windtalker","Haas's Claws","Malefic Roar","Blade of Despair"],s:"Inspire",n:"Рывка у тебя нет: стой позади команды и стреляй с максимальной дистанции."},
+ karrie:{i:["Swift Boots","Demon Hunter Sword","Golden Staff","Corrosion Scythe","Wind of Nature","Immortality"],s:"Inspire",n:"Каждая пятая атака бьёт чистым уроном от здоровья цели. Начинай с танков."},
+ kimmy:{i:["Magic Shoes","Hunter Strike","Blade of Despair","Malefic Roar","Sea Halberd","Wind of Nature"],s:"Flicker",n:"Вариант на физический урон. У Кимми есть и магическая сборка, сверь с рекомендуемой в игре."},
+ valir:{i:["Arcane Boots","Glowing Wand","Ice Queen Wand","Genius Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Держи врага на расстоянии огненной стеной и добивай огненными шарами."},
+ gord:{i:["Arcane Boots","Glowing Wand","Ice Queen Wand","Genius Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Сначала оглуши шаром, затем включай луч. Стой за танком: рывка у тебя нет."},
+ xavier:{i:["Magic Shoes","Enchanted Talisman","Genius Wand","Glowing Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Чередуй умения, чтобы усилить их пассивкой. Ультимейтом добивай через всю карту."},
+ cyclops:{i:["Magic Shoes","Enchanted Talisman","Genius Wand","Concentrated Energy","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Каждое попадание шарами сокращает откат умений. Ультимейт лови на убийцу, который на тебя ныряет."},
+ cecilion:{i:["Demon Boots","Clock of Destiny","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive"],s:"Flicker",n:"Копи стаки пассивки с первой минуты: каждое попадание первым умением усиливает тебя."},
+ lylia:{i:MAGE,s:"Flicker",n:"Ставь бомбы под замедление и взрывай. Ультимейт возвращает тебя назад с прежним здоровьем."},
+ novaria:{i:MAGE,s:"Flicker",n:"Стреляй сквозь стены с максимальной дистанции: чем дольше летит снаряд, тем больше урон."},
+ eudora:{i:["Arcane Boots","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive","Blood Wings"],s:"Flicker",n:"Комбо из кустов: оглушение, затем молния и ультимейт. Вне засады ты слабее."},
+ aurora:{i:["Arcane Boots","Lightning Truncheon","Genius Wand","Holy Crystal","Divine Glaive","Winter Crown"],s:"Flicker",n:"Копи заряды пассивки, чтобы умение заморозило цель, и только потом заходи."},
+ nana:{i:MAGE,s:"Flicker",n:"Ставь Молину там, куда враг будет нырять. Пассивка один раз спасает от смерти."},
+ vale:{i:MAGE,s:"Flicker",n:"Подбрось врага вторым умением и сразу клади ультимейт под него."},
+ harley:{i:["Arcane Boots","Starlium Scythe","Genius Wand","Holy Crystal","Divine Glaive","Blood Wings"],s:"Flicker",n:"Оставь шляпу для возврата, влетай, ставь ультимейт на тонкую цель и возвращайся."},
+ kagura:{i:MAGE,s:"Flicker",n:"Зонтик снимает контроль при возврате. Комбо: зонт, рывок к зонту, ультимейт дважды."},
+ pharsa:{i:MAGE,s:"Flicker",n:"Ультимейт включай с безопасного места за спинами команды, от ганка улетай птицей."},
+ kadita:{i:["Arcane Boots","Genius Wand","Holy Crystal","Divine Glaive","Blood Wings","Winter Crown"],s:"Flicker",n:"Заходи в волне: в ней ты не получаешь контроль. Ультимейт ставь вплотную к цели."},
+ lunox:{i:["Arcane Boots","Genius Wand","Concentrated Energy","Holy Crystal","Divine Glaive","Blood Wings"],s:"Flicker",n:"Ультимейт в режиме порядка даёт неуязвимость: переживи им прокаст врага, затем бей хаосом."},
+ yve:{i:["Arcane Boots","Clock of Destiny","Glowing Wand","Ice Queen Wand","Genius Wand","Divine Glaive"],s:"Flicker",n:"Ультимейт ставь из-за спины команды: во время него ты не двигаешься."},
+ valentina:{i:["Arcane Boots","Clock of Destiny","Genius Wand","Holy Crystal","Divine Glaive","Winter Crown"],s:"Flicker",n:"Копируй ультимейт самого полезного врага. Перед драфтом смотри, чей ультимейт стоит украсть."},
+ odette:{i:["Arcane Boots","Clock of Destiny","Genius Wand","Holy Crystal","Divine Glaive","Winter Crown"],s:"Flicker",n:"Во время ультимейта ты уязвима для контроля: включай его после вспышки или из-за стены."},
+ vexana:{i:["Arcane Boots","Glowing Wand","Genius Wand","Holy Crystal","Divine Glaive","Ice Queen Wand"],s:"Flicker",n:"Попади страхом первым умением, затем клади второе и ультимейт в ту же точку."},
+ zetian:{i:MAGE,s:"Flicker",n:"Новый герой: это общая сборка для мага с бёрстом. Сверь её с рекомендуемой в игре."},
+ alice:{i:["Demon Boots","Clock of Destiny","Glowing Wand","Ice Queen Wand","Winter Crown","Immortality"],s:"Flicker",n:"Живучий маг ближнего боя, чаще играет на линии опыта. Влетай в центр драки и держи ультимейт включённым."},
+ marcel:{i:["Magic Shoes", "Enchanted Talisman", "Fleeting Time", "Dominance Ice", "Athena's Shield", "Immortality"],s:"Flicker",r:"Поощрение",n:"Ходи с лесником и давай обзор. Ультимейт держи под ключевой момент драки. Новый герой: сборка общая для роли, сверь с рекомендуемой в игре."},
+ khufra:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ rafaela:{i:["Magic Shoes", "Enchanted Talisman", "Flask of the Oasis", "Oracle", "Athena's Shield", "Immortality"],s:"Flicker",r:"Благосклонность",n:"Держись за спиной своего керри и не ходи один. Лечение береги под драку."},
+ diggie:{i:["Magic Shoes", "Enchanted Talisman", "Fleeting Time", "Dominance Ice", "Athena's Shield", "Immortality"],s:"Flicker",r:"Поощрение",n:"Ходи с лесником и давай обзор. Ультимейт держи под ключевой момент драки."},
+ floryn:{i:["Magic Shoes", "Enchanted Talisman", "Flask of the Oasis", "Oracle", "Athena's Shield", "Immortality"],s:"Flicker",r:"Благосклонность",n:"Держись за спиной своего керри и не ходи один. Лечение береги под драку."},
+ minotaur:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ carmilla:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ lolita:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ gloo:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ estes:{i:["Magic Shoes", "Enchanted Talisman", "Flask of the Oasis", "Oracle", "Athena's Shield", "Immortality"],s:"Flicker",r:"Благосклонность",n:"Держись за спиной своего керри и не ходи один. Лечение береги под драку."},
+ belerick:{i:["Tough Boots", "Cursed Helmet", "Blade Armor", "Athena's Shield", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ atlas:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ natalia:{i:["Magic Shoes", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Flicker",r:"Острый удар",n:"Ходи в невидимости за вражескими стрелком и магом. Глуши их и убивай, пока команда отвлекает остальных."},
+ faramis:{i:["Magic Shoes", "Enchanted Talisman", "Fleeting Time", "Dominance Ice", "Athena's Shield", "Immortality"],s:"Flicker",r:"Поощрение",n:"Ходи с лесником и давай обзор. Ультимейт держи под ключевой момент драки."},
+ kalea:{i:["Magic Shoes", "Enchanted Talisman", "Fleeting Time", "Dominance Ice", "Athena's Shield", "Immortality"],s:"Flicker",r:"Поощрение",n:"Ходи с лесником и давай обзор. Ультимейт держи под ключевой момент драки. Новый герой: сборка общая для роли, сверь с рекомендуемой в игре."},
+ angela:{i:["Magic Shoes", "Enchanted Talisman", "Flask of the Oasis", "Oracle", "Athena's Shield", "Immortality"],s:"Flicker",r:"Благосклонность",n:"Держись за спиной своего керри и не ходи один. Лечение береги под драку."},
+ kaja:{i:["Magic Shoes", "Enchanted Talisman", "Fleeting Time", "Dominance Ice", "Athena's Shield", "Immortality"],s:"Flicker",r:"Поощрение",n:"Ходи с лесником и давай обзор. Ультимейт держи под ключевой момент драки."},
+ johnson:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ hylos:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ chip:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ grock:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ tigreal:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ mathilda:{i:["Magic Shoes", "Enchanted Talisman", "Fleeting Time", "Dominance Ice", "Athena's Shield", "Immortality"],s:"Flicker",r:"Поощрение",n:"Ходи с лесником и давай обзор. Ультимейт держи под ключевой момент драки."},
+ franco:{i:["Tough Boots", "Dominance Ice", "Athena's Shield", "Antique Cuirass", "Guardian Helmet", "Immortality"],s:"Flicker",r:"Маскировка",n:"Заходи первым и давай контроль на вражеских стрелка и мага. Маскировку включай перед заходом."},
+ masha:{i:["Swift Boots", "Corrosion Scythe", "Demon Hunter Sword", "Golden Staff", "Malefic Roar", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ argus:{i:["Swift Boots", "Corrosion Scythe", "Demon Hunter Sword", "Golden Staff", "Malefic Roar", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ sun:{i:["Swift Boots", "Corrosion Scythe", "Demon Hunter Sword", "Golden Staff", "Malefic Roar", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ aulus:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ edith:{i:["Tough Boots", "Thunder Belt", "Brute Force Breastplate", "Oracle", "Antique Cuirass", "Immortality"],s:"Flicker",n:"Держи линию и принимай урон на себя. В драке заходи после инициации роумера."},
+ guinevere:{i:["Tough Boots", "Genius Wand", "Concentrated Energy", "Holy Crystal", "Oracle", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ terizla:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ badang:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ khaleed:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ paquito:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ xborg:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ uranus:{i:["Tough Boots", "Thunder Belt", "Brute Force Breastplate", "Oracle", "Antique Cuirass", "Immortality"],s:"Flicker",n:"Держи линию и принимай урон на себя. В драке заходи после инициации роумера."},
+ cici:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ dyrroth:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ yuzhong:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ thamuz:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ ruby:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ lapulapu:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ phoveus:{i:["Tough Boots", "Genius Wand", "Concentrated Energy", "Holy Crystal", "Oracle", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ arlott:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ esmeralda:{i:["Tough Boots", "Thunder Belt", "Brute Force Breastplate", "Oracle", "Antique Cuirass", "Immortality"],s:"Flicker",n:"Держи линию и принимай урон на себя. В драке заходи после инициации роумера."},
+ gatotkaca:{i:["Tough Boots", "Thunder Belt", "Brute Force Breastplate", "Oracle", "Antique Cuirass", "Immortality"],s:"Flicker",n:"Держи линию и принимай урон на себя. В драке заходи после инициации роумера."},
+ chou:{i:["Tough Boots", "War Axe", "Hunter Strike", "Brute Force Breastplate", "Queen's Wings", "Immortality"],s:"Flicker",n:"Выигрывай размены у своих миньонов. После двух предметов помогай команде на черепахе и в драках."},
+ ling:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ barats:{i:["Tough Boots", "Thunder Belt", "Cursed Helmet", "Athena's Shield", "Antique Cuirass", "Immortality"],s:"Retribution",r:"Ледяное",rk:"Тип возмездия",n:"Забирай черепаху и лорда. В драках заходи первым и принимай урон."},
+ fredrinn:{i:["Tough Boots", "Thunder Belt", "Cursed Helmet", "Athena's Shield", "Antique Cuirass", "Immortality"],s:"Retribution",r:"Ледяное",rk:"Тип возмездия",n:"Забирай черепаху и лорда. В драках заходи первым и принимай урон."},
+ saber:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ aamon:{i:["Arcane Boots", "Genius Wand", "Holy Crystal", "Concentrated Energy", "Divine Glaive", "Winter Crown"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ akai:{i:["Tough Boots", "Thunder Belt", "Cursed Helmet", "Athena's Shield", "Antique Cuirass", "Immortality"],s:"Retribution",r:"Ледяное",rk:"Тип возмездия",n:"Забирай черепаху и лорда. В драках заходи первым и принимай урон."},
+ hanzo:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ julian:{i:["Arcane Boots", "Genius Wand", "Holy Crystal", "Concentrated Energy", "Divine Glaive", "Winter Crown"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ leomord:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ nolan:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ suyou:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ yin:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ yisunshin:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ alpha:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ karina:{i:["Arcane Boots", "Genius Wand", "Holy Crystal", "Concentrated Energy", "Divine Glaive", "Winter Crown"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ joy:{i:["Arcane Boots", "Genius Wand", "Holy Crystal", "Concentrated Energy", "Divine Glaive", "Winter Crown"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ gusion:{i:["Arcane Boots", "Genius Wand", "Holy Crystal", "Concentrated Energy", "Divine Glaive", "Winter Crown"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ roger:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ hayabusa:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ helcurt:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ martis:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ baxia:{i:["Tough Boots", "Thunder Belt", "Cursed Helmet", "Athena's Shield", "Antique Cuirass", "Immortality"],s:"Retribution",r:"Ледяное",rk:"Тип возмездия",n:"Забирай черепаху и лорда. В драках заходи первым и принимай урон."},
+ lancelot:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."},
+ fanny:{i:["Tough Boots", "Hunter Strike", "Blade of the Heptaseas", "Malefic Roar", "Blade of Despair", "Immortality"],s:"Retribution",r:"Пламенное",rk:"Тип возмездия",n:"Чисти лес по кругу и приходи на линию, где у союзников есть контроль. Возмездие держи под черепаху и лорда."}
+};
+
+// Матчапы линии золота. p: [герой, преимущество в п.п. или null, почему]
+const EG={
+ brody:{ph:[1,0,-1],p:[["popol",null,"Ловушки и Купа мешают ему спокойно набивать метки, а линия у Пополя сильная с первых минут."],["clint",null,"Достаёт усиленной атакой издалека и не проигрывает раннюю стадию."],["bruno",null,"Держит размен в начале и сильнее Броуди в поздней игре."]],
+  t:[["Сабер",2.3],["Маша",2.3],["Дигги",2.3],["Баратс",1.9],["Хуфра",1.8]],a:[["Иритель",2.7],["Натан",2.2]],
+  tips:["Броуди сильнее всего до 10-й минуты. Не разменивайся в начале, фарми под башней.","После 16-й минуты он проседает. Тяни игру и дерись в поздней стадии."]},
+ lesley:{ph:[-1,0,1],p:[["popol",2.5,"Единственный стрелок с измеренным преимуществом. Ловушки раскрывают её маскировку, Купа принимает выстрелы."],["brody",null,"Давит в первые минуты, пока Лесли слаба, и убивает её одним комбо."]],
+  t:[["Эстес",2.9],["Маша",2.9],["Глу",2.7],["Сан",2.2],["Тигрил",2.0]],a:[["Клауд",3.9],["Бруно",3.3],["Иритель",2.2]],
+  tips:["Лесли слаба в начале и раскрывается после 16-й минуты. Набери преимущество за первые 10 минут.","Цепной контроль (Хуфра, Минотавр, Лолита, Тигрил) сбивает её рывки. Проси ганк: сама она от него не уходит."]},
+ obsidia:{ph:[1,0,-1],p:[["miya",2.3,"Единственный стрелок с измеренным преимуществом против Обсидии. Переживи начало и перестреляй её позже."],["bruno",null,"Подходит по механике: сильный урон с дистанции и хороший рост к поздней игре."]],
+  t:[["Баксия",3.5],["Эстес",2.4],["Дигги",2.4],["Белерик",2.1]],a:[],
+  tips:["Её банят чаще всех (51%). Если бан свободен, лучше потратить его на неё.","Обсидия сильна до 10-й минуты и слабеет в затяжной игре. Избегай ранних драк.","Ей мешает контроль: Белерик, Хуфра, Марсель, Лолита."]},
+ hanabi:{ph:[0,1,0],p:[["beatrix",3.3,"Лучший стрелок против Ханаби: перестреливает её с большей дистанции."],["wanwan",2.7,"Уходит от её контроля рывками и убивает ультимейтом."],["ixia",2.4,"Выигрывает раннюю стадию и давит её до пика силы."]],
+  t:[["Лолита",3.4],["Карина",2.5],["Бенедетта",2.5],["Лапу-Лапу",2.3]],a:[["Пополь и Купа",2.1],["Москов",2.1]],
+  tips:["Ханаби сильнее всего с 10-й по 16-ю минуту. Задави её раньше или переиграй позже.","Не стой рядом с миньонами и союзниками: её сюрикены отскакивают."]},
+ claude:{ph:[0,0,0],p:[["lesley",3.9,"Самое большое преимущество среди стрелков: убивает Клауда раньше, чем он успевает нанести урон."],["natan",1.9,"Второй измеренный вариант на линию золота."]],
+  t:[["Аамон",2.9],["Эдит",2.7],["Наталья",2.0]],a:[["Иксия",2.6]],
+  tips:["У Клауда нет слабой стадии игры. Выигрывай позицией и командной игрой.","Контроль ломает его подвижность: Марсель, Хуфра, Минотавр, Кармилла."]},
+ miya:{ph:[0,0,0],p:[["bruno",null,"Измеренного преимущества у стрелков нет. Бруно подходит по механике: сильный бёрст по тонкой цели."],["clint",null,"Давит на линии усиленными выстрелами и не даёт ей фармить."],["brody",null,"Убивает Мию одним комбо, пока у неё нет предметов."]],
+  t:[["Белерик",3.8],["Гатоткача",2.4],["Халид",1.9],["Хилос",1.7],["Лолита",1.7]],a:[["Обсидия",2.3],["Москов",2.1],["Иритель",2.1]],
+  tips:["Лучше всего Мию контрят танки, которые возвращают урон: попроси роумера взять Белерика.","Слабой стадии у неё нет. Наказывай, когда её ультимейт в откате."]},
+ layla:{ph:[-1,0,1],p:[["bruno",null,"Измеренного преимущества у стрелков нет. Бруно сильнее на линии и убивает её в начале."],["clint",null,"Выигрывает размен в первые минуты, пока Лейла слаба."],["irithel",null,"Подвижная: уходит от её ультимейта и стреляет на ходу."]],
+  t:[["Атлас",3.7],["Джонсон",2.7],["Сан",2.7],["Хуфра",2.4],["Хилос",2.2]],a:[],
+  tips:["Лейла слабее всего до 10-й минуты и сильнее всего после 16-й. Заканчивай игру рано.","У неё нет рывка. Любой ганк с контролем её убивает."]},
+ granger:{ph:[1,0,-1],p:[["clint",null,"Измеренного преимущества у стрелков нет. Клинт держит раннюю стадию и не отдаёт линию."],["bruno",null,"Не уступает в бёрсте и сильнее в поздней игре."],["popol",null,"Купа принимает его пули, ловушки останавливают рывок."]],
+  t:[["Фанни",3.5],["Хильда",3.3],["Уранус",2.3],["Акай",1.9],["Джавхед",1.9]],a:[["Беатрис",2.4],["Иксия",2.3]],
+  tips:["Грейнджер сильнее всего до 10-й минуты и слабеет после 16-й. Не умирай в начале.","Держи здоровье выше половины: его ультимейт добивает издалека."]},
+ wanwan:{ph:[-1,0,1],p:[["bruno",3.0,"Лучший стрелок против Ванван: убивает её быстрее, чем она сбивает слабые точки."],["irithel",2.5,"Стреляет на ходу, поэтому Ванван сложно открыть на ней ультимейт."]],
+  t:[["Фовиус",6.5],["Люнокс",3.5],["Фарамис",3.5],["Циклоп",3.5],["Хуфра",3.2]],a:[["Иксия",4.1],["Ханаби",2.8],["Беатрис",2.4]],
+  tips:["Ванван слабее всего до 10-й минуты. Дави её с первых волн.","Фовиус на линии опыта даёт +6,5 п.п.: проси его у команды.","Не давай обходить себя по кругу: стой спиной к стене или башне."]},
+ karrie:{ph:[1,-1,0],p:[["popol",null,"Измеренного преимущества у стрелков нет. Пополь выигрывает линию и держит её на дистанции ловушками."],["bruno",null,"Больше дальность и бёрст: убивает её до того, как она наберёт стаки."],["clint",null,"Давит усиленными выстрелами издалека."]],
+  t:[["Сан",2.7],["Аргус",2.7],["Минситтар",2.6],["Лолита",2.6],["Икс.Борг",2.3]],a:[],
+  tips:["Кэрри плавит танков чистым уроном. Не рассчитывай, что передняя линия её удержит.","У неё короткая дистанция атаки. Стреляй с расстояния и не подпускай."]},
+ beatrix:{ph:[1,-1,0],p:[["granger",2.4,"Обменивается бёрстом на её дистанции и добивает ультимейтом."],["irithel",2.4,"Подвижная: уходит от снайперского выстрела и стреляет на ходу."],["wanwan",2.4,"Рывками уворачивается от её умений."],["moskov",2.0,"Быстро сокращает дистанцию и переигрывает по скорости атаки."]],
+  t:[["Кайя",2.2],["Лолита",2.2],["Чу",2.1]],a:[["Ханаби",3.3]],
+  tips:["Беатрис сильнее всего до 10-й минуты. Не стой на прямой линии под её снайперкой.","Вблизи без дробовика она слабее. Заходи, когда у неё в руках дальнобойное оружие."]},
+ moskov:{ph:[0,0,0],p:[["miya",2.1,"Лучший измеренный вариант: перестреливает Москова в затяжном размене."],["hanabi",2.0,"Щит защищает от его контроля, а отскоки бьют его за миньонами."]],
+  t:[["Циклоп",2.1],["Дайрот",2.1],["Сабер",2.0],["Мартис",2.0]],a:[["Беатрис",2.2]],
+  tips:["Не стой у стен: копьё оглушает, если отбрасывает тебя в стену.","Не выстраивайся с союзниками в одну линию, его атаки пробивают насквозь."]},
+ clint:{ph:[1,0,-1],p:[["harith",1.4,"Единственный герой линии золота с измеренным преимуществом. Маг с рывками, уходит от его выстрелов."],["bruno",null,"Подходит по механике: сильнее Клинта в поздней игре."],["popol",null,"Купа блокирует усиленные выстрелы и держит линию."]],
+  t:[["Фанни",2.7],["Сабер",1.4],["Матильда",1.4],["Алиса",1.3]],a:[],
+  tips:["Клинт сильнее всего до 10-й минуты и проседает после 16-й. Фарми спокойно и тяни игру.","После каждого умения его следующий выстрел бьёт дальше. Отходи, когда он использовал умение."]},
+ bruno:{ph:[0,0,0],p:[["lesley",3.2,"Лучший стрелок против Бруно: стреляет дальше и убивает его из маскировки."]],
+  t:[["Лолита",4.4],["Одетта",2.4],["Аамон",2.3],["Карина",2.1]],a:[["Ванван",3.0]],
+  tips:["После реворка в сезоне 42 Бруно играет агрессивно. Не подставляйся под мяч.","Лолита блокирует его мяч щитом и даёт +4,4 п.п.: проси её в роум."]},
+ melissa:{ph:[-1,0,1],p:[["ixia",1.9,"Единственный стрелок с измеренным преимуществом. Сильна в начале, пока Мелисса слаба."],["bruno",null,"Давит раннюю стадию и убивает её до ключевых предметов."],["clint",null,"Выигрывает размен на линии в первые минуты."]],
+  t:[["Белерик",2.6],["Теризла",2.0],["Эдит",1.7],["Харли",1.7]],a:[["Пополь и Купа",4.0]],
+  tips:["Мелисса слабее всего до 10-й минуты и сильнее всего после 16-й. Набери преимущество в начале.","Её ультимейт выталкивает ныряющих героев. Заходи после того, как она его потратила."]},
+ ixia:{ph:[1,0,-1],p:[["wanwan",4.3,"Самое большое преимущество: рывками выходит из зоны её ультимейта и убивает."],["claude",2.6,"Влетает и возвращается, пока Иксия стоит на месте во время ультимейта."],["granger",2.3,"Перестреливает её бёрстом на линии."]],
+  t:[["Наталья",3.1],["Кадита",3.0],["Бенедетта",2.9],["Ханзо",2.9]],a:[["Ханаби",2.4],["Мелисса",1.9]],
+  tips:["Иксия сильнее всего до 10-й минуты и проседает после 16-й.","Во время ультимейта она не двигается. Обходи сбоку или сзади."]},
+ irithel:{ph:[0,0,0],p:[["brody",2.7,"Лучший стрелок против Иритель: убивает её одним комбо."],["miya",2.2,"Перестреливает в затяжной драке."],["lesley",2.1,"Достаёт с дистанции, на которую Иритель не дотягивается."]],
+  t:[["Сабер",2.4],["Эйдора",2.2]],a:[["Ванван",2.3]],
+  tips:["Иритель стреляет на ходу, догонять её бесполезно. Лови контролем.","Сабер или Эйдора убивают её одной связкой: проси у команды."]},
+ natan:{ph:[0,0,0],p:[["brody",2.2,"Убивает Натана бёрстом до того, как тот наберёт стаки."],["granger",2.0,"Перестреливает на линии и добивает издалека."]],
+  t:[["Лолита",3.4],["Арлотт",2.4],["Баксия",2.3],["Нолан",2.2]],a:[],
+  tips:["Натан бьёт магическим уроном. Против него помогает «Золотой метеор» или «Щит Афины».","Слабой стадии у него нет. Не давай ему копить стаки на миньонах."]},
+ kimmy:{ph:[1,0,-1],p:[["bruno",null,"Измеренного преимущества у стрелков нет. Бруно убивает её бёрстом и сильнее в поздней игре."],["popol",null,"Купа принимает её поток выстрелов, ловушки не дают ей кайтить."],["irithel",null,"Тоже стреляет на ходу и сильнее в затяжной драке."]],
+  t:[["Карина",3.3],["Лолита",3.2],["Фанни",2.5],["Наталья",2.4],["Арлотт",2.1]],a:[],
+  tips:["Кимми сильнее всего до 10-й минуты и проседает после 16-й.","Ей опасны убийцы: Карина и Фанни добираются до неё вплотную."]},
+ popol:{ph:[0,0,0],p:[["melissa",4.0,"Самое большое преимущество среди стрелков: кукла держит Купу на расстоянии."],["hanabi",2.1,"Щит защищает от ловушек, отскоки бьют и Пополя, и Купу."]],
+  t:[["Кармилла",3.4],["Атлас",3.4],["Ксавьер",3.3],["Марсель",3.2],["Сора",2.7]],a:[["Лесли",2.5]],
+  tips:["Смотри под ноги в кустах: ловушка Пополя обездвиживает.","Сначала убей Купу, без него Пополь заметно слабее."]}
+};
+
+// Запасные объяснения для подбора «по механике» на миду
+const WK={
+ kadita:"Ныряет в волне, уходит от умений и убивает одним комбо.",
+ lunox:"Неуязвимость на ультимейте позволяет пережить прокаст и ответить.",
+ xavier:"Перестреливает с большей дистанции и спокойно держит линию.",
+ yve:"Бьёт издалека и держит врага на расстоянии полем ультимейта.",
+ gord:"Наказывает лучом с дистанции, пока враг стоит на месте."
+};
+const EM={
+ valir:{ph:[0,0,0],p:[["harley",2.1,"Убивает Валира одним комбо издалека и уходит рывком."],["novaria",2.1,"Достаёт снарядом с дистанции, на которую Валир не дотягивается."],["kagura",1.8,"Снимает его контроль зонтиком и переигрывает по подвижности."],["pharsa",1.6,"Бьёт ультимейтом издалека, не заходя в зону огня."]],
+  t:[["Кайя",3.5],["Хелкарт",3.2],["Рафаэла",3.2],["Лолита",3.0],["Матильда",3.0]],a:[["Алиса",3.8]],
+  tips:["Валир в S-тире с винрейтом 54,1% и без слабой стадии. Если бан свободен, подумай о нём.","Не подходи вплотную: огненная стена отталкивает. Сильнее всего он против героев ближнего боя."]},
+ gord:{ph:[-1,1,0],p:[["kadita",null,"Ныряет под его луч и убивает одним комбо: рывка у Горда нет."],["lunox",null],["xavier",null]],
+  t:[["Наталья",3.4],["Хелкарт",2.8],["Линг",2.7],["Матильда",2.3],["Бенедетта",2.2]],a:[["Алиса",1.8]],
+  tips:["Горд слабее всего до 10-й минуты, а пик силы у него с 10-й по 16-ю.","Весь его урон рассчитан на неподвижную цель. Не стой на месте и уходи вбок от луча."]},
+ xavier:{ph:[1,0,-1],p:[["kadita",null],["lunox",null],["yve",null]],
+  t:[["Наталья",4.0],["Лолита",3.9],["Хелкарт",3.2],["Алдос",2.5],["Зилонг",2.4]],a:[],
+  tips:["Ксавьер сильнее всего до 10-й минуты и слабеет после 16-й.","Его умения летят по длинной прямой. Двигайся вбок, а не назад.","Убийцы в лесу работают против него лучше всего: Наталья даёт +4,0 п.п."]},
+ cyclops:{ph:[-1,0,1],p:[["yve",null,"Бьёт с дистанции, на которую шары Циклопа не долетают."],["xavier",null],["gord",null]],
+  t:[["Лолита",9.4],["Эстес",4.0],["Минотавр",2.7],["Атлас",2.5]],a:[],
+  tips:["Циклоп слабее всего до 10-й минуты и сильнее всего после 16-й. Дави линию с начала.","Лолита блокирует его шары щитом и даёт +9,4 п.п. Это самый сильный контрпик на всей странице: проси её в роум."]},
+ kadita:{ph:[0,0,0],p:[["alice",2.1,"Единственный маг с измеренным преимуществом: переживает её комбо и выигрывает затяжной размен."],["lunox",null],["gord",null,"Наказывает лучом в момент, когда она вынырнула из волны."]],
+  t:[["Марсель",3.0],["Ванван",1.9],["Фовиус",1.5]],a:[["Ив",1.7]],
+  tips:["Слабой стадии у Кадиты нет.","В волне она не получает контроль. Оглушай и замедляй сразу после того, как она вынырнула.","Держи «Зимнюю корону» или вспышку под её комбо."]},
+ zetian:{ph:[0,0,0],p:[["valentina",2.2,"Лучший измеренный вариант на мид: крадёт её ультимейт и бьёт им же."],["harith",1.8,"Рывками уходит от умений и добирается до неё вплотную."],["yve",1.7,"Перестреливает с дистанции и держит полем ультимейта."]],
+  t:[["Глу",2.0],["Флорин",2.0]],a:[],
+  tips:["Ультимейт Зетиан достаёт в любую точку карты. С низким здоровьем сразу уходи на базу.","У неё мало здоровья: любой нырок с контролем её убивает."]},
+ cecilion:{ph:[1,0,-1],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Хаябуса",1.7],["Иксия",1.6],["Ханзо",1.6],["Хелкарт",1.4],["Наталья",1.3]],a:[],
+  tips:["По статистике Сесилион сильнее всего до 10-й минуты и проседает после 16-й.","Измеренных контрпиков у него мало и все слабые. Выигрывай позицией: уходи вбок от первого умения."]},
+ kagura:{ph:[1,-1,0],p:[["harith",2.0,"Рывки и щит позволяют пережить её комбо и ответить вплотную."],["odette",1.8,"Перебивает её уроном по области, когда Кагура влетает."]],
+  t:[["Фовиус",2.3],["Фрейя",2.0],["Эсмеральда",1.8]],a:[["Валир",1.7]],
+  tips:["Кагура сильнее всего до 10-й минуты и проседает с 10-й по 16-ю.","Следи за зонтиком: она прыгает к нему и от него. Не стой рядом с зонтом."]},
+ novaria:{ph:[0,0,0],p:[["kadita",null,"Ныряет в волне под её снарядом и убивает одним комбо: рывка у Новарии нет."],["lunox",null],["xavier",null]],
+  t:[["Наталья",3.3],["Линг",2.7],["Глу",2.1],["Алдос",2.0]],a:[["Валир",2.0],["Луо И",1.7]],
+  tips:["Стой за миньонами и двигайся зигзагом: её главный урон идёт от дальнего снаряда по прямой.","Её ультимейт подсвечивает тебя сквозь кусты, засады против неё не работают."]},
+ yve:{ph:[0,0,0],p:[["harley",2.2,"Влетает, убивает её ультимейтом и возвращается к шляпе."],["kadita",1.7,"Ныряет в волне через её поле и убивает комбо."]],
+  t:[["Джой",4.1],["Сабер",2.9],["Фанни",2.8],["Хаябуса",2.7],["Нолан",2.5]],a:[["Алиса",3.1]],
+  tips:["Во время ультимейта Ив не двигается. Это лучший момент, чтобы нырнуть на неё.","Против неё сильны убийцы: Джой даёт +4,1 п.п."]},
+ lunox:{ph:[0,0,0],p:[["odette",2.2,"Единственный маг с измеренным преимуществом против Люнокс."],["gord",null]],
+  t:[["Сабер",2.5],["Руби",2.1],["Эдит",2.1],["Фредрин",2.0]],a:[],
+  tips:["Слабой стадии у Люнокс нет.","Жди, пока она потратит ультимейт с неуязвимостью, и только потом вкладывай урон."]},
+ luoyi:{ph:[0,0,0],p:[["novaria",1.7,"Единственный маг с измеренным преимуществом: достаёт её издалека."],["gord",null],["yve",null]],
+  t:[["Джой",1.9],["Лолита",1.8],["Хелкарт",1.8],["Бенедетта",1.7]],a:[],
+  tips:["Не стойте с союзниками рядом: её метки инь и ян стягивают и оглушают, когда встречаются.","Её ультимейт переносит всю команду. Следи за картой, когда Луо И пропала."]},
+ pharsa:{ph:[0,0,0],p:[["zetian",1.4,"Единственный маг с измеренным преимуществом против Фарсы."],["gord",null],["yve",null]],
+  t:[["Маша",1.9],["Глу",1.9],["Наталья",1.8],["Ханзо",1.8]],a:[["Валир",1.3]],
+  tips:["Во время ультимейта Фарса стоит на месте. Ныряй на неё или выходи из зоны.","У неё мало здоровья, а птица — единственный способ уйти."]},
+ lylia:{ph:[1,0,-1],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Джой",2.6],["Матильда",2.0],["Чичи",1.7],["Чу",1.6],["Кайя",1.6]],a:[["Алиса",1.7]],
+  tips:["Лилия сильнее всего до 10-й минуты и проседает после 16-й.","Не добивай её вполсилы: ультимейт возвращает её назад с прежним здоровьем."]},
+ vexana:{ph:[0,0,0],p:[["alice",2.7,"Лучший измеренный вариант: переживает её прокаст и выигрывает вблизи."],["kadita",null],["lunox",null]],
+  t:[["Марсель",2.3],["Наталья",2.0],["Икс.Борг",1.9],["Бенедетта",1.8]],a:[["Одетта",2.0],["Заск",1.8]],
+  tips:["Уходи вбок от первого умения: страх ведёт тебя под её остальной урон.","Не дерись рядом с её призванным рыцарем."]},
+ valentina:{ph:[1,-1,-1],p:[["odette",2.6,"Единственный маг с измеренным преимуществом против Валентины."]],
+  t:[["Марсель",3.1],["Сабер",2.7],["Минситтар",2.7],["Джонсон",2.7]],a:[["Зетиан",2.0]],
+  tips:["Валентина сильнее всего до 10-й минуты и слабеет дальше. Избегай ранних драк.","Она копирует чужой ультимейт. Чем сильнее ультимейты в твоей команде, тем она опаснее."]},
+ zhask:{ph:[0,0,0],p:[["alice",2.8,"Лучший измеренный маг: влетает и ломает его позицию вокруг турели."],["vexana",1.8,"Страх и урон по области выбивают его из-под турели."]],
+  t:[["Натан",3.2],["Баксия",3.2],["Белерик",3.0],["Эстес",2.5],["Уранус",2.3]],a:[],
+  tips:["Не дерись рядом с его турелью: сначала сломай её или вымани Заска.","Натан на линии золота даёт +3,2 п.п. против него."]},
+ zhuxin:{ph:[0,0,0],p:[["odette",2.5,"Единственный маг с измеренным преимуществом против Чжу Синь."],["gord",null]],
+  t:[["Нолан",2.6],["Дигги",2.4],["Арлотт",2.3],["Хаябуса",2.2]],a:[],
+  tips:["Она сильнее всего против танков и бойцов. Не выстраивайтесь перед ней кучей.","Убийцы добираются до неё: Нолан и Хаябуса."]},
+ eudora:{ph:[0,0,0],p:[["lunox",null,"Неуязвимость на ультимейте поглощает её прокаст целиком."],["kadita",null,"В волне не получает оглушение и убивает её в ответ."],["xavier",null]],
+  t:[["Атлас",2.9],["Маша",2.9],["Баратс",2.2],["Леоморд",2.1]],a:[],
+  tips:["Проверяй кусты умениями: Эйдора убивает из засады одним комбо.","Против неё хорошо работает «Щит Афины»."]},
+ aurora:{ph:[0,0,0],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Инь",2.0],["Бенедетта",1.7],["Гатоткача",1.7],["Белерик",1.4]],a:[["Одетта",2.1]],
+  tips:["Смотри на её заряды: когда пассивка заряжена, следующее умение замораживает.","Заходи сразу после того, как она потратила заморозку."]},
+ nana:{ph:[0,0,0],p:[["xavier",null,"Достаёт её с дистанции, не наступая на Молину."],["yve",null],["gord",null]],
+  t:[["Глу",2.8],["Атлас",2.7],["Хилос",2.0],["Акай",1.9]],a:[["Одетта",2.9]],
+  tips:["Пассивка один раз спасает Нану от смерти. Сначала сбей её, потом вкладывай главный урон.","Не ныряй на неё через Молину: превращение ломает любой заход."]},
+ odette:{ph:[0,0,0],p:[["vale",3.1,"Лучший контрпик на мид: подбрасывает её и сбивает ультимейт."],["nana",2.9,"Молина превращает Одетту и прерывает ультимейт."],["aurora",2.1,"Заморозка останавливает её ультимейт."],["vexana",2.0,"Страх сбивает ультимейт и ведёт её под урон."]],
+  t:[["Гатоткача",3.1],["Альфа",2.6],["Эдит",2.6]],a:[["Валентина",2.6],["Харит",2.4],["Чжу Синь",2.3],["Люнокс",2.2],["Кагура",1.8]],
+  tips:["Весь её урон в ультимейте, и он сбивается любым контролем. Держи контроль под него.","У Одетты больше всего измеренных контрпиков на миду."]},
+ vale:{ph:[-1,0,1],p:[["kadita",null],["lunox",null],["xavier",null]],
+  t:[["Халид",2.8],["Глу",2.8],["Атлас",2.3],["Хилос",2.0]],a:[["Одетта",3.1]],
+  tips:["Вейл слабее всего до 10-й минуты и сильнее всего после 16-й. Дави линию с начала.","Уходи вбок от его подброса: без него ультимейт легко избежать."]},
+ harley:{ph:[-1,0,1],p:[["kadita",null],["lunox",null],["gord",null,"Оглушает и сжигает лучом, когда Харли влетел."]],
+  t:[["Лолита",5.2],["Сан",3.0],["Пополь и Купа",2.8],["Глу",2.7],["Роджер",2.6]],a:[["Алиса",2.4],["Ив",2.2],["Валир",2.2]],
+  tips:["Харли слабее всего до 10-й минуты и сильнее всего после 16-й.","Выходи из кольца его ультимейта: урон приходит в конце. Здесь спасает «Зимняя корона»."]}
+};
+
+// Матчапы роума: p — роумеры с измеренным преимуществом, иначе сильные роумеры патча (метка "wr")
+const ER={
+ marcel:{ph:[1, 0, -1],p:[["floryn", 4.7, "По ранговой статистике выигрывает этот матчап. Лечит всю команду ультимейтом через всю карту."], ["angela", 4.7, "По ранговой статистике выигрывает этот матчап. Вселяется в союзника, даёт ему щит и лечение."], ["rafaela", 3.1, "По ранговой статистике выигрывает этот матчап. Лечит и ускоряет команду, ультимейт оглушает по линии."]],
+  t:[["Эсмеральда", 3.6], ["Лесли", 3.6], ["Циклоп", 3.3], ["Аамон", 3.1], ["Карина", 3.0]],a:[["Атлас", 5.6], ["Джонсон", 2.8], ["Белерик", 2.7], ["Грок", 2.7], ["Хуфра", 2.4], ["Кайя", 2.0]],
+  tips:["Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки и тяни игру.", "В S-тире с винрейтом 57,4%. Его лучше банить, а против него берут лечащих саппортов."]},
+ khufra:{ph:[0, 0, 0],p:[["minotaur", 2.5, "По ранговой статистике выигрывает этот матчап. В ярости подбрасывает всех вокруг и лечит союзников."], ["marcel", 2.4, "По ранговой статистике выигрывает этот матчап. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты."], ["kalea", 1.7, "По ранговой статистике выигрывает этот матчап. Саппорт-боец, сильнее всего до 10-й минуты."]],
+  t:[["Чжу Синь", 3.6], ["Алиса", 3.4], ["Бейн", 2.4], ["И Сун-Син", 1.9], ["Мартис", 1.8]],a:[["Матильда", 3.0], ["Джонсон", 2.7]],
+  tips:["Не используй рывки рядом с его шаром: он сбивает их и подбрасывает."]},
+ rafaela:{ph:[0, 0, 0],p:[["khufra", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,8%), и у врага нет против него преимущества. Прыжок с контролем и шар, который останавливает чужие рывки.", "wr"], ["diggie", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,3%), и у врага нет против него преимущества. Ультимейт снимает контроль со всей команды и даёт к нему иммунитет.", "wr"], ["floryn", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,1%), и у врага нет против него преимущества. Лечит всю команду ультимейтом через всю карту.", "wr"]],
+  t:[["Одетта", 2.7], ["Иксия", 2.7], ["Сильванна", 2.1], ["Эйдора", 2.0], ["Сора", 2.0]],a:[["Наталья", 3.3], ["Марсель", 2.9], ["Хилос", 2.2]],
+  tips:["Убивайте её первой: без лечения и ускорения её команда заметно слабее."]},
+ diggie:{ph:[1, 0, -1],p:[["estes", 3.8, "По ранговой статистике выигрывает этот матчап. Самое сильное массовое лечение в затяжных драках."], ["franco", 2.7, "По ранговой статистике выигрывает этот матчап. Притягивает крюком и подавляет цель ультимейтом."]],
+  t:[["Сан", 3.3], ["Ханзо", 3.1], ["Эсмеральда", 3.1], ["Чанъэ", 3.0], ["Лейла", 3.0]],a:[],
+  tips:["Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки и тяни игру.", "Дождись, пока Дигги потратит ультимейт, и только потом вкладывай главный контроль."]},
+ floryn:{ph:[1, 0, -1],p:[["lolita", 4.2, "По ранговой статистике выигрывает этот матчап. Щит блокирует летящие снаряды, ультимейт оглушает по области."], ["franco", 2.2, "По ранговой статистике выигрывает этот матчап. Притягивает крюком и подавляет цель ультимейтом."]],
+  t:[["Инь", 2.8], ["Иксия", 2.6], ["Сильванна", 2.3], ["Эйдора", 2.3]],a:[["Марсель", 4.4], ["Фарамис", 2.7]],
+  tips:["Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки и тяни игру.", "Её ультимейт лечит через всю карту. Берите предметы против лечения: «Трезубец» и «Господство льда»."]},
+ minotaur:{ph:[0, 0, 0],p:[["marcel", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 57,4%), и у врага нет против него преимущества. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты.", "wr"], ["rafaela", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,5%), и у врага нет против него преимущества. Лечит и ускоряет команду, ультимейт оглушает по линии.", "wr"], ["diggie", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,3%), и у врага нет против него преимущества. Ультимейт снимает контроль со всей команды и даёт к нему иммунитет.", "wr"]],
+  t:[["Алиса", 2.9], ["Ив", 2.8], ["Чжу Синь", 2.7], ["Беатрис", 2.6], ["Джой", 2.2]],a:[["Лолита", 4.6], ["Джонсон", 2.8], ["Хуфра", 2.7]],
+  tips:["Следи за его шкалой ярости: в ярости подброс дольше, отходи заранее."]},
+ carmilla:{ph:[1, 0, -1],p:[["marcel", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 57,4%), и у врага нет против него преимущества. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты.", "wr"], ["khufra", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,8%), и у врага нет против него преимущества. Прыжок с контролем и шар, который останавливает чужие рывки.", "wr"], ["rafaela", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,5%), и у врага нет против него преимущества. Лечит и ускоряет команду, ультимейт оглушает по линии.", "wr"]],
+  t:[["Валентина", 4.0], ["Икс.Борг", 3.2], ["Лесли", 2.3], ["Бенедетта", 2.2], ["Ксавьер", 2.1]],a:[["Чип", 3.1], ["Джонсон", 2.1], ["Глу", 1.9]],
+  tips:["Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки и тяни игру.", "Не стойте кучей: её ультимейт связывает героев и делит урон и контроль на всех."]},
+ lolita:{ph:[-1, 0, 1],p:[["atlas", 3.6, "По ранговой статистике выигрывает этот матчап. Стягивает нескольких врагов и бросает их в одну точку."], ["minotaur", 3.3, "По ранговой статистике выигрывает этот матчап. В ярости подбрасывает всех вокруг и лечит союзников."], ["grock", 3.0, "По ранговой статистике выигрывает этот матчап. Ставит стену и наносит большой урон у стен."]],
+  t:[["Чжу Синь", 6.9], ["Ив", 6.8], ["Эсмеральда", 6.1], ["Аврора", 5.8], ["Кагура", 5.2]],a:[["Флорин", 4.8], ["Ангела", 3.6]],
+  tips:["Слабее всего до 10-й минуты и сильнее всего после 16-й. Набирай преимущество в начале.", "Не стреляй в её щит: он блокирует снаряды. Маги с уроном по области ломают её лучше всего."]},
+ gloo:{ph:[0, 0, 0],p:[["faramis", 5.8, "По ранговой статистике выигрывает этот матчап. Ультимейт даёт команде вторую жизнь на несколько секунд."], ["kaja", 2.2, "По ранговой статистике выигрывает этот матчап. Ультимейтом выдёргивает одного врага к своей команде."], ["carmilla", 1.9, "По ранговой статистике выигрывает этот матчап. Связывает врагов ультимейтом: урон и контроль делятся между ними."]],
+  t:[["Москов", 5.0], ["Натан", 4.7], ["Люнокс", 4.1], ["Алиса", 3.8], ["Чжу Синь", 3.7]],a:[["Джонсон", 4.0]],
+  tips:["Когда Глу прилип, урон по нему частично идёт в тебя. Бейте его всей командой, пока он разделён."]},
+ estes:{ph:[0, 0, 0],p:[["atlas", 3.3, "По ранговой статистике выигрывает этот матчап. Стягивает нескольких врагов и бросает их в одну точку."], ["tigreal", 2.6, "По ранговой статистике выигрывает этот матчап. Толкает и стягивает врагов ультимейтом под урон команды."]],
+  t:[["Иксия", 5.2], ["Беатрис", 5.1], ["Сора", 4.3], ["Нолан", 4.0], ["Луо И", 3.6]],a:[["Фарамис", 4.2], ["Дигги", 3.8], ["Ангела", 2.0]],
+  tips:["Предметы против лечения обязательны: «Трезубец» стрелку, «Господство льда» танку."]},
+ belerick:{ph:[0, 0, 0],p:[["marcel", 2.7, "По ранговой статистике выигрывает этот матчап. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты."]],
+  t:[["Ксавьер", 3.0], ["Беатрис", 2.9], ["Броуди", 2.8], ["Лесли", 2.7], ["Леоморд", 2.4]],a:[["Джонсон", 2.8]],
+  tips:["Стрелкам с высокой скоростью атаки против него тяжело. Маги и урон умениями работают лучше."]},
+ atlas:{ph:[0, 0, 0],p:[["marcel", 5.6, "По ранговой статистике выигрывает этот матчап. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты."]],
+  t:[["Ванван", 3.8], ["Алиса", 3.3], ["Валентина", 3.2], ["Линг", 3.2], ["Фанни", 2.7]],a:[["Лолита", 3.6], ["Эстес", 3.3], ["Джонсон", 3.0], ["Франко", 2.2]],
+  tips:["Не стойте кучей и держите «Зимнюю корону» или вспышку под его ультимейт."]},
+ natalia:{ph:[-1, 0, 1],p:[["mathilda", 4.7, "По ранговой статистике выигрывает этот матчап. Переносит союзника и влетает во врагов с уроном."], ["rafaela", 3.3, "По ранговой статистике выигрывает этот матчап. Лечит и ускоряет команду, ультимейт оглушает по линии."], ["chip", 2.7, "По ранговой статистике выигрывает этот матчап. Ставит порталы и переносит команду через карту."]],
+  t:[["Циклоп", 5.1], ["Карина", 4.5], ["Сабер", 3.8], ["Пакито", 3.4], ["Алукард", 3.3]],a:[],
+  tips:["Слабее всего до 10-й минуты и сильнее всего после 16-й. Набирай преимущество в начале.", "Она сильнее всего после 16-й минуты. Ходи вдвоём и проверяй кусты умениями."]},
+ faramis:{ph:[0, 0, 0],p:[["estes", 4.0, "По ранговой статистике выигрывает этот матчап. Самое сильное массовое лечение в затяжных драках."], ["angela", 3.3, "По ранговой статистике выигрывает этот матчап. Вселяется в союзника, даёт ему щит и лечение."]],
+  t:[["Одетта", 3.4], ["Алиса", 3.2], ["Джулиан", 3.0], ["Дайрот", 2.4], ["Луо И", 2.1]],a:[["Глу", 5.8]],
+  tips:["После его ультимейта враги оживают на несколько секунд. Отойди и добей, когда эффект закончится."]},
+ kalea:{ph:[1, 0, -1],p:[["marcel", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 57,4%), и у врага нет против него преимущества. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты.", "wr"], ["rafaela", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,5%), и у врага нет против него преимущества. Лечит и ускоряет команду, ультимейт оглушает по линии.", "wr"], ["diggie", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,3%), и у врага нет против него преимущества. Ультимейт снимает контроль со всей команды и даёт к нему иммунитет.", "wr"]],
+  t:[["Фовиус", 2.0], ["Ханаби", 1.9], ["Бальмонд", 1.6], ["Минситтар", 1.6], ["Мия", 1.6]],a:[["Хуфра", 1.7]],
+  tips:["Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки и тяни игру.", "Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки."]},
+ angela:{ph:[0, 0, 0],p:[["lolita", 3.6, "По ранговой статистике выигрывает этот матчап. Щит блокирует летящие снаряды, ультимейт оглушает по области."], ["franco", 2.7, "По ранговой статистике выигрывает этот матчап. Притягивает крюком и подавляет цель ультимейтом."]],
+  t:[["Сильванна", 2.2], ["Зилонг", 2.0], ["Эдит", 1.9], ["Гвиневра", 1.6]],a:[["Марсель", 4.7], ["Фарамис", 3.3], ["Грок", 1.8]],
+  tips:["Фокусьте героя, в которого она вселилась, только после окончания ультимейта, либо убивайте её до него."]},
+ kaja:{ph:[1, 0, -1],p:[["marcel", 1.9, "По ранговой статистике выигрывает этот матчап. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты."]],
+  t:[["Одетта", 4.9], ["Люнокс", 3.1], ["Заск", 2.4], ["Сабер", 2.2]],a:[["Грок", 2.6], ["Глу", 2.2], ["Франко", 2.1]],
+  tips:["Сильнее всего до 10-й минуты и проседает после 16-й. Не отдавай ранние драки и тяни игру.", "Не ходи один и держись вне дальности его ультимейта: он выдёргивает одного героя."]},
+ johnson:{ph:[0, 0, 0],p:[["gloo", 4.0, "По ранговой статистике выигрывает этот матчап. Прилипает к вражескому герою и мешает ему драться."], ["atlas", 3.0, "По ранговой статистике выигрывает этот матчап. Стягивает нескольких врагов и бросает их в одну точку."], ["belerick", 2.8, "По ранговой статистике выигрывает этот матчап. Возвращает урон атакующим и провоцирует врагов рядом."], ["marcel", 2.8, "По ранговой статистике выигрывает этот матчап. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты."]],
+  t:[["Алиса", 3.0], ["Харит", 2.5], ["Натан", 2.5], ["Кадита", 2.3], ["Лилия", 2.2]],a:[["Франко", 2.1]],
+  tips:["Смотри на мини-карту: машина видна издалека. Отходи вбок или ставь танка на её пути."]},
+ hylos:{ph:[-1, 0, 1],p:[["rafaela", 2.3, "По ранговой статистике выигрывает этот матчап. Лечит и ускоряет команду, ультимейт оглушает по линии."]],
+  t:[["Икс.Борг", 4.0], ["Ив", 3.7], ["Чжу Синь", 3.2], ["Кимми", 3.0], ["Кэрри", 2.9]],a:[["Джонсон", 2.2]],
+  tips:["Слабее всего до 10-й минуты и сильнее всего после 16-й. Набирай преимущество в начале.", "Не дерись на его дорожке. Герои с уроном от процента здоровья убивают его быстрее всех."]},
+ chip:{ph:[0, 0, 0],p:[["carmilla", 3.1, "По ранговой статистике выигрывает этот матчап. Связывает врагов ультимейтом: урон и контроль делятся между ними."]],
+  t:[["Алиса", 3.6], ["Бейн", 3.1], ["Мелисса", 2.7], ["Мартис", 2.6], ["Аврора", 2.1]],a:[["Матильда", 3.2], ["Наталья", 2.7], ["Флорин", 2.2]],
+  tips:["Следи за картой: порталы Чипа приводят всю команду туда, где её не ждёшь."]},
+ grock:{ph:[-1, 0, 1],p:[["kaja", 2.4, "По ранговой статистике выигрывает этот матчап. Ультимейтом выдёргивает одного врага к своей команде."], ["angela", 2.3, "По ранговой статистике выигрывает этот матчап. Вселяется в союзника, даёт ему щит и лечение."]],
+  t:[["Алиса", 3.6], ["Эсмеральда", 2.6], ["Ив", 2.2]],a:[["Джонсон", 1.8]],
+  tips:["Слабее всего до 10-й минуты и сильнее всего после 16-й. Набирай преимущество в начале.", "Дерись на открытом месте, подальше от стен: возле них он намного сильнее."]},
+ tigreal:{ph:[0, 0, 0],p:[["marcel", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 57,4%), и у врага нет против него преимущества. Ультимейтом ловит малоподвижных героев, сильнее всего до 10-й минуты.", "wr"], ["khufra", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,8%), и у врага нет против него преимущества. Прыжок с контролем и шар, который останавливает чужие рывки.", "wr"], ["rafaela", null, "Измеренного контрпика среди роумеров нет. Это сильный роумер патча (винрейт 54,5%), и у врага нет против него преимущества. Лечит и ускоряет команду, ультимейт оглушает по линии.", "wr"]],
+  t:[["Алиса", 3.6], ["Икс.Борг", 2.9], ["Зетиан", 2.5], ["Валир", 2.4], ["Аулус", 2.4]],a:[["Эстес", 2.7], ["Франко", 2.0]],
+  tips:["Стой подальше от стен и не выстраивайся в линию с союзниками."]},
+ mathilda:{ph:[0, 0, 0],p:[["lolita", 3.0, "По ранговой статистике выигрывает этот матчап. Щит блокирует летящие снаряды, ультимейт оглушает по области."], ["khufra", 2.9, "По ранговой статистике выигрывает этот матчап. Прыжок с контролем и шар, который останавливает чужие рывки."]],
+  t:[["Эсмеральда", 4.7], ["Одетта", 3.4], ["Мелисса", 2.8], ["Циклоп", 2.8], ["Алукард", 2.6]],a:[["Наталья", 4.9]],
+  tips:["Сейчас слабый пик (винрейт 44,6%). Контроль ловит её в момент влёта."]},
+ franco:{ph:[-1, 0, 1],p:[["atlas", 2.2, "По ранговой статистике выигрывает этот матчап. Стягивает нескольких врагов и бросает их в одну точку."], ["johnson", 2.1, "По ранговой статистике выигрывает этот матчап. Превращается в машину и врезается во врагов с союзником на борту."], ["tigreal", 2.0, "По ранговой статистике выигрывает этот матчап. Толкает и стягивает врагов ультимейтом под урон команды."]],
+  t:[["Ханзо", 2.7], ["Сан", 2.5], ["Пополь и Купа", 2.4]],a:[["Дигги", 2.7], ["Ангела", 2.7], ["Флорин", 2.5]],
+  tips:["Слабее всего до 10-й минуты и сильнее всего после 16-й. Набирай преимущество в начале.", "Стой за миньонами, чтобы крюк попадал в них. Сейчас слабый пик (винрейт 41,6%)."]}
+};
+
+const EX={
+ masha:{ph:[0, 0, 0],p:[["argus", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 56,8%), и у врага нет против него преимущества.", "wr"], ["sun", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 54,0%), и у врага нет против него преимущества.", "wr"], ["aulus", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 53,5%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Эстес", 3.4], ["Фрейя", 3.2], ["Мелисса", 2.5], ["Бруно", 2.2], ["Рафаэла", 2.0]],a:[["Чичи", 2.4], ["Ю Чжун", 2.3]],
+  tips:["Самый сильный герой патча с винрейтом 60,3%. Если бан свободен, тратьте его на неё."]},
+ argus:{ph:[-1, 0, 1],p:[["terizla", 3.2, "По ранговой статистике выигрывает этот матчап."], ["uranus", 3.0, "По ранговой статистике выигрывает этот матчап."], ["ruby", 2.3, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Баратс", 3.2], ["Фредрин", 2.2]],a:[["Арлотт", 2.2], ["Гвиневра", 2.1]],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего до 10-й минуты.", "Не добивай его под ультимейтом: в это время он бессмертен. Отойди и вернись, когда эффект закончится."]},
+ sun:{ph:[0, 0, 0],p:[["ruby", 3.6, "По ранговой статистике выигрывает этот матчап."], ["badang", 1.8, "По ранговой статистике выигрывает этот матчап."], ["aulus", 1.8, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Натан", 5.2], ["Джой", 3.8], ["Марсель", 3.5], ["Кимми", 3.4], ["Алукард", 3.0]],a:[],
+  tips:["Бейте настоящего Сана и берите урон по области, чтобы убирать клонов."]},
+ aulus:{ph:[0, 0, 0],p:[["alice", 3.0, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Ив", 2.4], ["Флорин", 2.4], ["Чжу Синь", 2.2], ["Эстес", 2.0]],a:[["Сан", 1.8], ["Руби", 1.8]],
+  tips:["Чем дольше драка, тем сильнее его топор. Не затягивай размены."]},
+ edith:{ph:[0, 1, 0],p:[["masha", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 60,3%), и у врага нет против него преимущества.", "wr"], ["argus", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 56,8%), и у врага нет против него преимущества.", "wr"], ["sun", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 54,0%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Лолита", 4.9], ["Беатрис", 2.6], ["Баксия", 2.4], ["Карина", 2.1], ["Ханзо", 1.9]],a:[["Алиса", 3.7]],
+  tips:["По статистике сильнее всего с 10-й по 16-ю минуту.", "После ультимейта она стреляет издалека. Заходи, когда ультимейт в откате."]},
+ guinevere:{ph:[1, 0, -1],p:[["argus", 2.1, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Ванван", 2.9], ["Дигги", 2.6], ["Джой", 2.5], ["Хуфра", 2.4]],a:[["Эсмеральда", 1.7]],
+  tips:["По статистике сильнее всего до 10-й минуты, слабее всего после 16-й минуты.", "Её комбо начинается с подброса. Уходи вбок от второго умения."]},
+ alice:{ph:[0, 0, 0],p:[["edith", 3.6, "По ранговой статистике выигрывает этот матчап."], ["cici", 3.0, "По ранговой статистике выигрывает этот матчап."], ["dyrroth", 3.0, "По ранговой статистике выигрывает этот матчап."], ["thamuz", 2.5, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Ангела", 4.7], ["Кэрри", 4.1], ["Флорин", 4.0], ["Эстес", 3.9], ["Валир", 3.7]],a:[["Фовиус", 3.1], ["Аулус", 3.0]],
+  tips:["Берите предметы против лечения: она живёт за счёт восстановления в драке."]},
+ terizla:{ph:[0, 1, -1],p:[["xborg", 4.2, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Валир", 2.3], ["Кэрри", 2.2], ["Ангела", 2.1], ["Ксавьер", 2.0]],a:[["Аргус", 3.2], ["Фовиус", 2.3]],
+  tips:["По статистике сильнее всего с 10-й по 16-ю минуту, слабее всего после 16-й минуты.", "Он медленный. Держи дистанцию и не стой в зоне его ультимейта."]},
+ badang:{ph:[0, 0, 0],p:[["esmeralda", 2.1, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Карина", 2.2], ["Лолита", 2.2], ["Хуфра", 2.0], ["Дигги", 1.8]],a:[["Сан", 1.8]],
+  tips:["Не дерись у стен: его стена и серия ударов прижимают к ней."]},
+ khaleed:{ph:[0, 0, 0],p:[["phoveus", 2.8, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Ив", 2.8], ["Люнокс", 2.6], ["Фредрин", 2.5], ["Леоморд", 2.0]],a:[],
+  tips:["Сбивай контролем его восстановление, когда он останавливается лечиться."]},
+ paquito:{ph:[1, 0, 0],p:[["esmeralda", 3.0, "По ранговой статистике выигрывает этот матчап."], ["phoveus", 2.0, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Хуфра", 2.4], ["Мелисса", 1.9], ["Фредрин", 1.8]],a:[["Икс.Борг", 3.0]],
+  tips:["По статистике сильнее всего до 10-й минуты.", "Следи за его зарядами: усиленное умение бьёт намного больнее обычного."]},
+ xborg:{ph:[0, 0, 0],p:[["paquito", 3.1, "По ранговой статистике выигрывает этот матчап."], ["chou", 3.0, "По ранговой статистике выигрывает этот матчап."], ["arlott", 2.8, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Матильда", 3.8], ["Бенедетта", 3.8], ["Хелкарт", 3.7], ["Флорин", 3.5], ["Наталья", 3.3]],a:[["Теризла", 4.2], ["Фовиус", 3.8], ["Руби", 3.3], ["Гатоткача", 3.1], ["Чичи", 2.8]],
+  tips:["Сначала сбей его броню, затем отходи от взрыва ультимейта."]},
+ uranus:{ph:[0, 0, 0],p:[["dyrroth", 3.1, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Кэрри", 3.0], ["Ив", 2.9], ["Ангела", 2.7], ["Алдос", 2.5], ["Кимми", 2.4]],a:[["Гатоткача", 3.0], ["Аргус", 2.9]],
+  tips:["Без предметов против лечения его не убить: нужны «Трезубец» и «Господство льда»."]},
+ cici:{ph:[0, 0, 0],p:[["xborg", 2.8, "По ранговой статистике выигрывает этот матчап."], ["arlott", 2.7, "По ранговой статистике выигрывает этот матчап."], ["masha", 2.4, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Аамон", 4.5], ["Эстес", 3.8], ["Дигги", 2.8], ["Зилонг", 2.8], ["Рафаэла", 2.7]],a:[["Тамуз", 4.6], ["Алиса", 3.0], ["Ю Чжун", 1.8], ["Лапу-Лапу", 1.6]],
+  tips:["Она бьёт на ходу и сильнее против героев с большим запасом здоровья. Лови её контролем."]},
+ dyrroth:{ph:[-1, 1, 0],p:[["thamuz", 1.7, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Джонсон", 2.1], ["Нана", 1.9], ["Минситтар", 1.8], ["Сильванна", 1.8]],a:[["Эсмеральда", 3.4], ["Уранус", 3.2], ["Алиса", 3.0]],
+  tips:["По статистике сильнее всего с 10-й по 16-ю минуту, слабее всего до 10-й минуты.", "Он режет броню и убивает за одно комбо. Не разменивайся вблизи без защиты."]},
+ yuzhong:{ph:[0, 0, 0],p:[["masha", 2.3, "По ранговой статистике выигрывает этот матчап."], ["cici", 1.7, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Ванван", 1.8], ["Клауд", 1.6], ["Харит", 1.6]],a:[],
+  tips:["Отходи, когда на тебе копятся его метки: на полных стаках он лечится и бьёт сильнее."]},
+ thamuz:{ph:[-1, 0, 1],p:[["cici", 4.6, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Валир", 2.8], ["Ванван", 2.5], ["Бенедетта", 2.3], ["И Сун-Син", 2.1]],a:[["Алиса", 2.5], ["Дайрот", 1.7]],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего до 10-й минуты.", "Не стой в лаве под его ультимейтом: размен на его территории почти всегда проигран."]},
+ ruby:{ph:[1, 0, -1],p:[["xborg", 3.3, "По ранговой статистике выигрывает этот матчап."], ["phoveus", 3.1, "По ранговой статистике выигрывает этот матчап."], ["aulus", 1.8, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Лолита", 2.0], ["Горд", 1.7], ["Клинт", 1.4]],a:[["Сан", 3.6], ["Аргус", 2.3]],
+  tips:["По статистике сильнее всего до 10-й минуты, слабее всего после 16-й минуты.", "Она лечится от урона по нескольким целям. Не стойте кучей и берите предметы против лечения."]},
+ lapulapu:{ph:[1, 0, -1],p:[["esmeralda", 3.5, "По ранговой статистике выигрывает этот матчап."], ["cici", 1.5, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Харит", 2.0], ["Матильда", 1.9], ["Клауд", 1.8]],a:[["Аргус", 2.1]],
+  tips:["По статистике сильнее всего до 10-й минуты, слабее всего после 16-й минуты.", "Отходи от его ультимейта и возвращайся, когда он закончится."]},
+ phoveus:{ph:[0, 0, 0],p:[["xborg", 3.8, "По ранговой статистике выигрывает этот матчап."], ["alice", 3.1, "По ранговой статистике выигрывает этот матчап."], ["terizla", 2.3, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Минситтар", 4.0], ["Баратс", 3.5], ["Альфа", 3.4], ["Бейн", 3.1], ["Горд", 2.3]],a:[["Руби", 3.1], ["Халид", 2.8], ["Чу", 2.8], ["Арлотт", 2.0], ["Пакито", 1.8]],
+  tips:["Не используй рывки рядом с ним: каждый рывок даёт ему прыжок на тебя."]},
+ arlott:{ph:[0, 0, 0],p:[["argus", 2.2, "По ранговой статистике выигрывает этот матчап."], ["phoveus", 2.0, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Заск", 2.4], ["Джавхед", 2.2], ["Чип", 2.0], ["Лукас", 1.9]],a:[["Икс.Борг", 2.8], ["Чичи", 2.7]],
+  tips:["Его рывки перезаряжаются по целям под контролем. Не давайте контроль на союзников зря."]},
+ esmeralda:{ph:[0, 0, 0],p:[["dyrroth", 3.2, "По ранговой статистике выигрывает этот матчап."], ["alice", 2.6, "По ранговой статистике выигрывает этот матчап."], ["guinevere", 1.8, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Люнокс", 3.4], ["Кэрри", 3.3], ["Натан", 3.1], ["Фредрин", 2.4], ["Джулиан", 2.4]],a:[["Лапу-Лапу", 3.5], ["Фовиус", 3.3], ["Пакито", 3.0], ["Чу", 2.5], ["Баданг", 2.2]],
+  tips:["Она забирает чужие щиты, поэтому героям со щитами против неё тяжело."]},
+ gatotkaca:{ph:[-1, 0, 1],p:[["xborg", 3.1, "По ранговой статистике выигрывает этот матчап."], ["uranus", 3.0, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Лесли", 2.9], ["Баксия", 2.8], ["Матильда", 2.2]],a:[],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего до 10-й минуты.", "Сейчас слабый пик (винрейт 45,3%). Следи за его прыжком ультимейта издалека."]},
+ chou:{ph:[0, 0, 0],p:[["phoveus", 2.8, "По ранговой статистике выигрывает этот матчап."], ["esmeralda", 2.4, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Циклоп", 2.4], ["Хуфра", 1.9], ["Лукас", 1.8]],a:[["Икс.Борг", 3.0]],
+  tips:["Держи «Зимнюю корону» под его удар ногой: он выбивает тебя к своей команде."]}
+};
+const EJ={
+ ling:{ph:[0, 0, 0],p:[["saber", 4.0, "По ранговой статистике выигрывает этот матчап."], ["karina", 3.0, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Наталья", 5.5], ["Лукас", 3.2], ["Флорин", 3.1], ["Бруно", 3.1], ["Мелисса", 2.8]],a:[["Ханзо", 3.2]],
+  tips:["Контроль в момент приземления со стены его убивает. Наталья даёт против него +5,5 п.п."]},
+ barats:{ph:[0, 0, 0],p:[["alpha", 2.6, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Икс.Борг", 5.1], ["Алиса", 3.6], ["Горд", 3.4], ["Ив", 3.2], ["Валир", 2.6]],a:[],
+  tips:["Чем больше у него стаков, тем он крупнее и сильнее. Выходи из драки, чтобы стаки спали."]},
+ fredrinn:{ph:[0, 0, 0],p:[["alpha", 2.2, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Валир", 4.0], ["Горд", 2.7], ["Кэрри", 2.4], ["Икс.Борг", 2.3], ["Сесилион", 1.6]],a:[["Джой", 2.3], ["Хаябуса", 2.1]],
+  tips:["Не бей его слишком долго: накопленный урон он возвращает ультимейтом."]},
+ saber:{ph:[0, 0, 0],p:[["leomord", 3.2, "По ранговой статистике выигрывает этот матчап."], ["baxia", 2.9, "По ранговой статистике выигрывает этот матчап."], ["alpha", 2.6, "По ранговой статистике выигрывает этот матчап."], ["martis", 2.4, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Бальмонд", 3.4], ["Мия", 2.9], ["Сан", 2.8], ["Джонсон", 2.7], ["Ханаби", 2.6]],a:[["Линг", 4.0], ["Нолан", 4.0], ["Хаябуса", 2.6]],
+  tips:["Его ультимейт подбрасывает одну цель. Держи под него «Зимнюю корону»."]},
+ aamon:{ph:[0, 0, 0],p:[["hayabusa", 2.7, "По ранговой статистике выигрывает этот матчап."], ["gusion", 2.5, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Глу", 4.6], ["Лолита", 3.8], ["Сильванна", 2.7], ["Атлас", 2.6]],a:[],
+  tips:["Не стой с низким здоровьем: его ультимейт добивает тем сильнее, чем меньше у тебя здоровья."]},
+ akai:{ph:[0, 0, 0],p:[["ling", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 52,6%), и у врага нет против него преимущества.", "wr"], ["barats", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,6%), и у врага нет против него преимущества.", "wr"], ["fredrinn", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,3%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Марсель", 3.2], ["Алиса", 3.1], ["Эсмеральда", 2.8], ["Кайя", 2.8], ["Циклоп", 2.5]],a:[],
+  tips:["Не стой у стен: его ультимейт прижимает к ним и оглушает."]},
+ hanzo:{ph:[0, 0, 0],p:[["ling", 3.4, "По ранговой статистике выигрывает этот матчап."], ["helcurt", 2.3, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Наталья", 4.6], ["Хирара", 2.7], ["Сан", 2.5], ["Обсидия", 2.1]],a:[["Альфа", 2.2]],
+  tips:["Пока его демон дерётся, найдите и убейте настоящее тело."]},
+ julian:{ph:[1, 0, 0],p:[["baxia", 1.6, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Гвиневра", 1.9], ["Минситтар", 1.7], ["Тигрил", 1.5], ["Хилос", 1.4]],a:[],
+  tips:["По статистике сильнее всего до 10-й минуты.", "У него нет ультимейта, вся сила в серии из трёх умений. Не подставляйся под третье."]},
+ leomord:{ph:[0, 0, 0],p:[["ling", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 52,6%), и у врага нет против него преимущества.", "wr"], ["barats", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,6%), и у врага нет против него преимущества.", "wr"], ["fredrinn", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,3%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Валир", 3.2], ["Чжу Синь", 2.7], ["Кэрри", 2.7], ["Мелисса", 2.2], ["Ангела", 2.0]],a:[["Сабер", 3.1], ["Роджер", 1.8]],
+  tips:["Верхом на коне он бьёт критами. Убивайте его до ультимейта или отходите."]},
+ nolan:{ph:[1, 0, -1],p:[["saber", 3.9, "По ранговой статистике выигрывает этот матчап."], ["hayabusa", 2.1, "По ранговой статистике выигрывает этот матчап."], ["helcurt", 1.7, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Наталья", 3.8], ["Джавхед", 2.0]],a:[["Баксия", 2.3]],
+  tips:["По статистике сильнее всего до 10-й минуты, слабее всего после 16-й минуты.", "Не отдавай ему ранние драки за черепаху: дальше он слабеет."]},
+ suyou:{ph:[1, 0, 0],p:[["gusion", 1.5, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Харит", 2.2], ["Харли", 1.7], ["Одетта", 1.6], ["Ив", 1.5]],a:[["Инь", 1.4]],
+  tips:["По статистике сильнее всего до 10-й минуты.", "Он меняет стойку между дальним и ближним боем. Заходи, когда умения стойки потрачены."]},
+ yin:{ph:[-1, 0, 1],p:[["lancelot", 2.3, "По ранговой статистике выигрывает этот матчап."], ["roger", 1.7, "По ранговой статистике выигрывает этот матчап."], ["suyou", 1.5, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Ванван", 5.0], ["Эсмеральда", 3.6], ["Уранус", 3.2], ["Иритель", 2.7], ["Халид", 2.6]],a:[],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего до 10-й минуты.", "В его арене ты остаёшься с ним один на один. Ванван даёт против него +5,0 п.п."]},
+ yisunshin:{ph:[1, 0, -1],p:[["karina", 1.7, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Лолита", 1.9], ["Уранус", 1.8], ["Ксавьер", 1.4], ["Эсмеральда", 1.3]],a:[],
+  tips:["По статистике сильнее всего до 10-й минуты, слабее всего после 16-й минуты.", "Следи за выстрелом его ультимейта через всю карту, когда у тебя мало здоровья."]},
+ alpha:{ph:[-1, 0, 1],p:[["lancelot", 1.7, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Бенедетта", 3.7], ["Икс.Борг", 3.1], ["Валир", 2.6], ["Дигги", 2.5], ["Кайя", 2.2]],a:[["Баратс", 2.6], ["Сабер", 2.6], ["Фредрин", 2.2]],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего до 10-й минуты.", "Заходите в его лес в начале игры, пока он слаб."]},
+ karina:{ph:[-1, 0, 1],p:[["barats", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,6%), и у врага нет против него преимущества.", "wr"], ["fredrinn", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,3%), и у врага нет против него преимущества.", "wr"], ["saber", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,2%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Грейнджер", 4.7], ["Броуди", 4.0], ["Клинт", 3.0], ["Глу", 2.9], ["Люнокс", 2.8]],a:[["Линг", 3.0], ["Хелкарт", 2.9], ["И Сун-Син", 1.7]],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего до 10-й минуты.", "Грейнджер и Броуди дают против неё +4,7 и +4,0 п.п. После каждого добивания её умения сбрасываются."]},
+ joy:{ph:[0, 0, 0],p:[["martis", 1.7, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Москов", 4.1], ["Марсель", 3.1], ["Циклоп", 2.9], ["Мелисса", 2.8], ["Броуди", 2.4]],a:[["Суё", 1.9]],
+  tips:["Контроль сбивает ей ритм рывков. Без полной серии она не включит ультимейт."]},
+ gusion:{ph:[0, 0, 0],p:[["roger", 2.2, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Лолита", 3.0], ["Чип", 2.4], ["Хуфра", 2.1], ["Глу", 1.8]],a:[["Аамон", 2.2], ["Суё", 1.6]],
+  tips:["Отходи вбок от его кинжалов: без них комбо не складывается."]},
+ roger:{ph:[0, 0, 0],p:[["leomord", 2.3, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Ив", 3.0], ["Чжу Синь", 2.0], ["Пополь и Купа", 1.9], ["Хирара", 1.7]],a:[["Госсен", 2.3], ["Инь", 1.7], ["Хелкарт", 1.7]],
+  tips:["В форме волка он добивает цели с низким здоровьем. Не дерись с ним на малом запасе."]},
+ hayabusa:{ph:[0, 0, 0],p:[["saber", 2.6, "По ранговой статистике выигрывает этот матчап."], ["fredrinn", 2.1, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Лолита", 2.0], ["Заск", 1.8], ["Эйдора", 1.8], ["Баданг", 1.3]],a:[["Аамон", 2.9], ["Нолан", 2.1]],
+  tips:["Его ультимейт бьёт по одной цели слабее, если рядом союзники. Не ходи один."]},
+ helcurt:{ph:[0, -1, 1],p:[["karina", 2.9, "По ранговой статистике выигрывает этот матчап."], ["roger", 1.7, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Чип", 3.9], ["Обсидия", 2.9], ["Хильда", 2.8], ["Наталья", 2.7], ["Алдос", 2.5]],a:[["Ханзо", 2.6]],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего с 10-й по 16-ю минуту.", "Когда он гасит обзор, встаньте вместе у башни и не ходите поодиночке."]},
+ martis:{ph:[0, 0, 0],p:[["ling", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 52,6%), и у врага нет против него преимущества.", "wr"], ["barats", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,6%), и у врага нет против него преимущества.", "wr"], ["fredrinn", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,3%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Икс.Борг", 3.8], ["Минситтар", 3.0], ["Марсель", 2.2], ["Бальмонд", 2.1], ["Уранус", 1.6]],a:[["Сабер", 2.4]],
+  tips:["Во время умений у него иммунитет к контролю. Давай контроль между ними."]},
+ baxia:{ph:[0, 0, 0],p:[["hanzo", 2.8, "По ранговой статистике выигрывает этот матчап."], ["nolan", 2.4, "По ранговой статистике выигрывает этот матчап."]],
+  t:[["Икс.Борг", 5.0], ["Кэрри", 3.5], ["Беатрис", 3.0], ["Бенедетта", 3.0], ["Бейн", 2.9]],a:[["Сабер", 2.9], ["Джулиан", 1.6]],
+  tips:["Он режет лечение и щиты вокруг себя. Сейчас слабый пик (винрейт 45,5%)."]},
+ lancelot:{ph:[0, -1, 1],p:[["ling", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 52,6%), и у врага нет против него преимущества.", "wr"], ["barats", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,6%), и у врага нет против него преимущества.", "wr"], ["fredrinn", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,3%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Ангела", 3.3], ["Флорин", 2.6], ["Чичи", 2.2], ["Бруно", 1.9], ["Алукард", 1.8]],a:[["Инь", 2.5], ["Альфа", 1.7]],
+  tips:["По статистике сильнее всего после 16-й минуты, слабее всего с 10-й по 16-ю минуту.", "Сейчас слабый пик (винрейт 43,1%). Мгновенный контроль ловит его между рывками."]},
+ fanny:{ph:[1, 0, 0],p:[["ling", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 52,6%), и у врага нет против него преимущества.", "wr"], ["barats", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,6%), и у врага нет против него преимущества.", "wr"], ["fredrinn", null, "Измеренного контрпика на этой линии нет. Это сильный герой патча (винрейт 51,3%), и у врага нет против него преимущества.", "wr"]],
+  t:[["Москов", 3.1], ["Бруно", 2.9], ["Баданг", 2.7], ["Фарамис", 2.6], ["Чу", 2.5]],a:[],
+  tips:["По статистике сильнее всего до 10-й минуты.", "Сейчас слабый пик (винрейт 42,8%). Забирайте у неё синий бафф: без энергии она не летает."]}
+};
+
+// Слепой пик: винрейт за 7 дней, c = кто контрит героя, s = против кого он силён
+const BL={
+ gold:[
+  {id:"bruno",wr:53.92,risk:"На линии его контрит Лесли (+3,2 п.п.).",c:[["Лолита",4.4],["Одетта",2.4],["Аамон",2.3],["Карина",2.1]],s:[["Ванван",3.0]]},
+  {id:"brody",wr:50.04,c:[["Сабер",2.3],["Маша",2.3],["Дигги",2.3],["Баратс",1.9],["Хуфра",1.8]],s:[["Карина",4.0],["Наталья",3.0],["Белерик",2.8],["Иритель",2.7],["Джой",2.2],["Натан",2.2]]},
+  {id:"miya",wr:49.86,c:[["Белерик",3.8],["Гатоткача",2.4],["Халид",1.9],["Хилос",1.7],["Лолита",1.7]],s:[["Сабер",2.9],["Обсидия",2.3],["Москов",2.1],["Иритель",2.1],["Харит",2.1],["Калея",1.6],["Кадита",1.5]]},
+  {id:"layla",wr:49.57,c:[["Атлас",3.7],["Джонсон",2.7],["Сан",2.7],["Хуфра",2.4],["Хилос",2.2],["Грок",1.7]],s:[["Дигги",3.0],["Рафаэла",2.0],["Фовиус",2.0],["Эдит",1.9],["Марсель",1.8]]},
+  {id:"karrie",wr:48.94,c:[["Лолита",3.5],["Аргус",2.9],["Сан",2.8],["Минситтар",2.8],["Наталья",2.5],["Зилонг",2.1],["Хаябуса",2.0],["Гвиневра",1.9]],s:[["Алиса",4.1],["Баксия",3.5],["Эсмеральда",3.3],["Хилос",2.9],["Бальмонд",2.9],["Леоморд",2.8],["Уранус",2.8],["Хильда",2.7],["Фредрин",2.4],["Теризла",2.2]]},
+  {id:"kimmy",wr:48.56,c:[["Карина",3.3],["Лолита",3.2],["Фанни",2.5],["Наталья",2.4],["Арлотт",2.1]],s:[["Сан",3.4],["Хилос",2.7],["Атлас",2.6],["Уранус",2.4],["Хуфра",2.4],["Хильда",2.3],["Минотавр",2.1]]},
+  {id:"granger",wr:42.76,c:[["Фанни",3.5],["Хильда",3.3],["Уранус",2.3],["Акай",1.9],["Джавхед",1.9],["Ланселот",1.7]],s:[["Карина",4.7],["Беатрис",2.4],["Иксия",2.3],["Ив",2.3],["Дигги",2.0]]}
+ ],
+ mid:[
+  {id:"valir",wr:54.10,risk:"На миду его контрят Харли и Новария (по +2,1 п.п.).",c:[["Кайя",3.5],["Хелкарт",3.2],["Рафаэла",3.2],["Лолита",3.0],["Матильда",3.0],["Госсен",2.3]],s:[["Фредрин",4.0],["Алиса",3.8],["Бальмонд",3.5],["Леоморд",3.1],["Баратс",2.8],["Альфа",2.7],["Тамуз",2.7],["Тигрил",2.6],["Теризла",2.5]]},
+  {id:"xavier",wr:52.64,c:[["Наталья",4.0],["Лолита",3.9],["Хелкарт",3.2],["Алдос",2.5],["Зилонг",2.4],["Аамон",2.4],["Госсен",1.6]],s:[["Пополь и Купа",3.3],["Белерик",3.0],["Атлас",2.6],["Глу",2.4],["Марсель",2.3],["Кармилла",2.1],["Теризла",2.0],["И Сун-Син",1.4]]},
+  {id:"gord",wr:52.51,c:[["Наталья",3.4],["Хелкарт",2.8],["Линг",2.7],["Матильда",2.3],["Бенедетта",2.2]],s:[["Баратс",3.4],["Лолита",3.0],["Фредрин",2.7],["Фовиус",2.3],["Алиса",1.8],["Руби",1.7]]},
+  {id:"cyclops",wr:51.74,c:[["Лолита",9.4],["Эстес",4.0],["Минотавр",2.7],["Иксия",2.6],["Атлас",2.5]],s:[["Наталья",5.1],["Ванван",3.4],["Марсель",3.3],["Матильда",3.0],["Джой",2.9],["Акай",2.5],["Бенедетта",2.4],["Чу",2.4],["Алдос",2.3],["Москов",2.0],["Хаябуса",1.7]]},
+  {id:"cecilion",wr:50.84,c:[["Хаябуса",1.7],["Иксия",1.6],["Ханзо",1.6],["Хелкарт",1.4],["Наталья",1.3]],s:[["Лолита",4.2],["Хилос",2.0],["Баратс",1.8],["Дигги",1.8],["Фредрин",1.6]]},
+  {id:"eudora",wr:50.25,c:[["Атлас",2.9],["Маша",2.9],["Баратс",2.2],["Леоморд",2.1],["Аулус",1.6]],s:[["Флорин",2.4],["Хелкарт",2.3],["Иритель",2.2],["Наталья",2.2],["Рафаэла",2.2]]},
+  {id:"vale",wr:50.02,c:[["Халид",2.8],["Глу",2.8],["Атлас",2.3],["Хилос",2.0],["Лапу-Лапу",2.0],["Теризла",1.8]],s:[["Одетта",3.1],["Эстес",2.3],["Мелисса",2.1],["Рафаэла",1.8],["Сильванна",1.6]]},
+  {id:"novaria",wr:49.46,c:[["Наталья",3.3],["Линг",2.7],["Глу",2.1],["Алдос",2.0],["Чип",1.9]],s:[["Дигги",2.5],["Валир",2.0],["Бейн",1.9],["Ханаби",1.8],["Луо И",1.7]]},
+  {id:"lylia",wr:49.10,c:[["Джой",2.6],["Матильда",2.0],["Чичи",1.7],["Чу",1.6],["Кайя",1.6]],s:[["Джонсон",2.2],["Ханаби",2.2],["Альфа",2.1],["Баратс",1.9],["Алиса",1.7]]},
+  {id:"aurora",wr:48.78,c:[["Инь",2.0],["Бенедетта",1.7],["Гатоткача",1.7],["Белерик",1.4],["Ланселот",1.3]],s:[["Лолита",5.8],["Одетта",2.1],["Чип",2.1],["Эстес",1.5],["Фредрин",1.5]]},
+  {id:"harley",wr:48.50,c:[["Лолита",5.2],["Сан",3.0],["Пополь и Купа",2.8],["Глу",2.7],["Роджер",2.6],["Хильда",2.4]],s:[["Алиса",2.4],["Ив",2.2],["Валир",2.2],["Джой",2.0],["Мелисса",2.0],["Суё",1.7]]},
+  {id:"nana",wr:47.13,c:[["Глу",2.8],["Атлас",2.7],["Хилос",2.0],["Акай",1.9],["Пополь и Купа",1.8],["И Сун-Син",1.4]],s:[["Одетта",2.9],["Сабер",2.1],["Лолита",1.9],["Дайрот",1.9],["Мелисса",1.7]]}
+ ],
+ roam:[
+  {id:"marcel",wr:57.4,c:[["Флорин", 4.7], ["Ангела", 4.7], ["Эсмеральда", 3.6], ["Лесли", 3.6], ["Циклоп", 3.3], ["Аамон", 3.1], ["Рафаэла", 3.1], ["Карина", 3.0], ["Ксавьер", 2.3], ["Бруно", 2.3], ["Иритель", 1.9], ["Лейла", 1.8]],s:[["Атлас", 5.6], ["Сан", 3.5], ["Акай", 3.2], ["Пополь и Купа", 3.2], ["Валентина", 3.1], ["Кадита", 3.0], ["Джонсон", 2.8], ["Белерик", 2.7], ["Грок", 2.7], ["Джой", 2.5], ["Хуфра", 2.4], ["Вексана", 2.3], ["Мартис", 2.2], ["Кайя", 2.0], ["Лапу-Лапу", 1.7]]},
+  {id:"khufra",wr:54.8,c:[["Чжу Синь", 3.6], ["Алиса", 3.4], ["Минотавр", 2.5], ["Марсель", 2.4], ["Бейн", 2.4], ["И Сун-Син", 1.9], ["Мартис", 1.8], ["Калея", 1.7]],s:[["Алукард", 3.4], ["Сильванна", 3.2], ["Ванван", 3.1], ["Матильда", 3.0], ["Джонсон", 2.7], ["Пакито", 2.5], ["Хильда", 2.4], ["Лейла", 2.4], ["Гвиневра", 2.4], ["Сора", 2.2], ["Баданг", 2.0], ["Чу", 1.9], ["Броуди", 1.8], ["Госсен", 1.8]]},
+  {id:"rafaela",wr:54.5,c:[["Одетта", 2.7], ["Иксия", 2.7], ["Сильванна", 2.1], ["Эйдора", 2.0], ["Сора", 2.0], ["Вейл", 2.0], ["Лейла", 1.9]],s:[["Валир", 3.5], ["Наталья", 3.3], ["Марсель", 2.9], ["Чичи", 2.6], ["Хилос", 2.2], ["Маша", 2.2], ["Лилия", 1.6]]},
+  {id:"diggie",wr:54.3,c:[["Эстес", 3.8], ["Сан", 3.3], ["Ханзо", 3.1], ["Эсмеральда", 3.1], ["Чанъэ", 3.0], ["Лейла", 3.0], ["Заск", 2.8], ["Франко", 2.7], ["Инь", 2.7], ["Хильда", 2.5], ["Новария", 2.5], ["Зилонг", 2.4], ["Джулиан", 2.1], ["Грейнджер", 2.0], ["Тамуз", 1.9], ["Сесилион", 1.8], ["Фарса", 1.8]],s:[["Алиса", 3.4], ["Чичи", 2.8], ["Чжу Синь", 2.7], ["Валир", 2.7], ["Гвиневра", 2.6], ["Альфа", 2.5], ["Обсидия", 2.4], ["Броуди", 2.3], ["Баданг", 1.8], ["Ю Чжун", 1.6]]},
+  {id:"floryn",wr:54.1,c:[["Лолита", 4.2], ["Инь", 2.8], ["Иксия", 2.6], ["Сильванна", 2.3], ["Эйдора", 2.3], ["Франко", 2.2]],s:[["Марсель", 4.4], ["Алиса", 4.1], ["Икс.Борг", 3.6], ["Линг", 2.9], ["Фарамис", 2.7], ["Аулус", 2.5], ["Ланселот", 2.3], ["Маша", 2.2], ["Зетиан", 2.0]]},
+  {id:"minotaur",wr:53.6,c:[["Алиса", 2.9], ["Ив", 2.8], ["Чжу Синь", 2.7], ["Беатрис", 2.6], ["Джой", 2.2]],s:[["Лолита", 4.6], ["Сильванна", 2.9], ["Джонсон", 2.8], ["Хуфра", 2.7], ["Циклоп", 2.5]]},
+  {id:"carmilla",wr:53.2,c:[["Валентина", 4.0], ["Икс.Борг", 3.2], ["Лесли", 2.3], ["Бенедетта", 2.2], ["Ксавьер", 2.1]],s:[["Пополь и Купа", 3.4], ["Чип", 3.1], ["Хильда", 2.2], ["Джонсон", 2.1], ["Глу", 1.9]]},
+  {id:"lolita",wr:53.2,c:[["Чжу Синь", 6.9], ["Ив", 6.8], ["Эсмеральда", 6.1], ["Аврора", 5.8], ["Кагура", 5.2], ["Кадита", 4.8], ["Сесилион", 4.2], ["Зетиан", 4.0], ["Леоморд", 3.9], ["Джой", 3.7], ["Атлас", 3.6], ["Минотавр", 3.3], ["Фарса", 3.3], ["Мелисса", 3.3], ["Клинт", 3.3], ["Клауд", 3.2], ["Заск", 3.1], ["Грок", 3.0], ["Горд", 3.0], ["Харит", 3.0], ["Фрейя", 2.5], ["Халид", 2.4], ["Хирара", 2.1], ["Нана", 1.9], ["Теризла", 1.7], ["Вексана", 1.6]],s:[["Циклоп", 9.4], ["Чанъэ", 5.6], ["Бейн", 5.3], ["Харли", 5.2], ["Эдит", 5.1], ["Флорин", 4.8], ["Бруно", 4.3], ["Ксавьер", 3.9], ["Аамон", 3.8], ["Джавхед", 3.7], ["Ангела", 3.6], ["Кэрри", 3.5], ["Ханаби", 3.4], ["Кимми", 3.3], ["Госсен", 3.1], ["Беатрис", 2.4], ["Натан", 2.3], ["Баданг", 2.2], ["Руби", 2.0], ["И Сун-Син", 1.9], ["Луо И", 1.8], ["Мия", 1.7]]},
+  {id:"gloo",wr:53.0,c:[["Фарамис", 5.8], ["Москов", 5.0], ["Натан", 4.7], ["Люнокс", 4.1], ["Алиса", 3.8], ["Чжу Синь", 3.7], ["Линг", 3.6], ["Фредрин", 3.5], ["Руби", 3.4], ["Аулус", 3.2], ["Фанни", 3.2], ["Вексана", 3.1], ["Маша", 3.0], ["Чичи", 2.7], ["Ю Чжун", 2.5], ["Ксавьер", 2.4], ["Кайя", 2.2], ["Фрейя", 2.1], ["Кармилла", 1.9]],s:[["Аамон", 4.6], ["Джонсон", 4.0], ["Джавхед", 3.3], ["Инь", 3.0], ["Карина", 2.9], ["Чанъэ", 2.8], ["Нана", 2.8], ["Вейл", 2.8], ["Харли", 2.7], ["Лесли", 2.7], ["Эсмеральда", 2.4], ["Селена", 2.3], ["Новария", 2.1], ["Зетиан", 2.0], ["Госсен", 1.9], ["Фарса", 1.9]]},
+  {id:"estes",wr:52.6,c:[["Иксия", 5.2], ["Беатрис", 5.1], ["Сора", 4.3], ["Нолан", 4.0], ["Луо И", 3.6], ["Атлас", 3.3], ["Тигрил", 2.6], ["Инь", 2.2], ["Вейл", 2.2]],s:[["Фарамис", 4.2], ["Циклоп", 3.9], ["Алиса", 3.8], ["Дигги", 3.8], ["Чичи", 3.7], ["Маша", 3.5], ["Бальмонд", 3.1], ["Лесли", 2.8], ["Заск", 2.6], ["Обсидия", 2.4], ["Аулус", 2.0], ["Ангела", 2.0]]},
+  {id:"belerick",wr:51.7,c:[["Ксавьер", 3.0], ["Беатрис", 2.9], ["Броуди", 2.8], ["Марсель", 2.7], ["Лесли", 2.7], ["Леоморд", 2.4], ["Клинт", 1.9]],s:[["Мия", 3.8], ["Заск", 3.0], ["Сильванна", 2.9], ["Джонсон", 2.8], ["Сабер", 2.5], ["Мелисса", 2.2], ["Обсидия", 2.1], ["Аврора", 1.4]]},
+  {id:"atlas",wr:51.0,c:[["Марсель", 5.6], ["Ванван", 3.8], ["Алиса", 3.3], ["Валентина", 3.2], ["Линг", 3.2], ["Фанни", 2.7], ["Ксавьер", 2.6], ["Ланселот", 2.6], ["Кимми", 2.6], ["Москов", 2.2], ["Кадита", 1.7], ["Ю Чжун", 1.7]],s:[["Лейла", 3.7], ["Лолита", 3.6], ["Пополь и Купа", 3.4], ["Эстес", 3.3], ["Джонсон", 3.0], ["Эйдора", 2.9], ["Нана", 2.7], ["Хильда", 2.7], ["Аамон", 2.6], ["Циклоп", 2.5], ["Вейл", 2.3], ["Франко", 2.2], ["Бейн", 1.9]]},
+  {id:"natalia",wr:51.0,c:[["Циклоп", 5.1], ["Матильда", 4.7], ["Карина", 4.5], ["Сабер", 3.8], ["Пакито", 3.4], ["Рафаэла", 3.3], ["Алукард", 3.3], ["Зетиан", 3.0], ["Броуди", 3.0], ["Чип", 2.7], ["Суё", 2.7], ["Чжу Синь", 2.6], ["Леоморд", 2.5], ["Лукас", 2.4], ["Аулус", 2.3], ["Эйдора", 2.2], ["Госсен", 1.8], ["Чу", 1.7]],s:[["Линг", 5.5], ["Ханзо", 5.0], ["Ксавьер", 4.0], ["Минситтар", 3.6], ["Нолан", 3.5], ["Горд", 3.4], ["Икс.Борг", 3.3], ["Новария", 3.3], ["Иксия", 3.1], ["Валир", 3.0], ["Хелкарт", 2.7], ["Кэрри", 2.5], ["Беатрис", 2.5], ["Кимми", 2.3], ["Натан", 2.1], ["Вексана", 2.0], ["Клауд", 2.0], ["Фарса", 1.8], ["Сесилион", 1.3]]},
+  {id:"faramis",wr:50.7,c:[["Эстес", 4.0], ["Одетта", 3.4], ["Ангела", 3.3], ["Алиса", 3.2], ["Джулиан", 3.0], ["Дайрот", 2.4], ["Луо И", 2.1]],s:[["Глу", 5.8], ["Ванван", 3.5], ["Сан", 2.8], ["Фанни", 2.6], ["Карина", 2.4]]},
+  {id:"kalea",wr:50.4,c:[["Фовиус", 2.0], ["Ханаби", 1.9], ["Бальмонд", 1.6], ["Минситтар", 1.6], ["Мия", 1.6]],s:[["Фанни", 2.5], ["Хелкарт", 1.9], ["Ив", 1.9], ["Хуфра", 1.7], ["Валентина", 1.7]]},
+  {id:"angela",wr:50.1,c:[["Лолита", 3.6], ["Франко", 2.7], ["Сильванна", 2.2], ["Зилонг", 2.0], ["Эдит", 1.9], ["Гвиневра", 1.6]],s:[["Алиса", 4.7], ["Марсель", 4.7], ["Бальмонд", 3.7], ["Ланселот", 3.3], ["Фарамис", 3.3], ["Уранус", 2.7], ["Теризла", 2.1], ["Грок", 1.8]]},
+  {id:"kaja",wr:49.7,c:[["Одетта", 4.9], ["Люнокс", 3.1], ["Заск", 2.4], ["Сабер", 2.2], ["Марсель", 1.9]],s:[["Валир", 3.3], ["Акай", 2.7], ["Грок", 2.6], ["Альфа", 2.2], ["Глу", 2.2], ["Франко", 2.1], ["Лилия", 1.6]]},
+  {id:"johnson",wr:49.3,c:[["Глу", 4.0], ["Алиса", 3.0], ["Атлас", 3.0], ["Белерик", 2.8], ["Марсель", 2.8], ["Хуфра", 2.7], ["Минотавр", 2.6], ["Харит", 2.5], ["Натан", 2.5], ["Кадита", 2.3], ["Лилия", 2.2], ["Кармилла", 2.1], ["Клауд", 2.0], ["Грок", 2.0]],s:[["Сабер", 2.7], ["Лейла", 2.7], ["Валентина", 2.7], ["Зилонг", 2.5], ["Дайрот", 2.1], ["Франко", 2.1]]},
+  {id:"hylos",wr:48.7,c:[["Икс.Борг", 4.0], ["Ив", 3.7], ["Чжу Синь", 3.2], ["Кимми", 3.0], ["Кэрри", 2.9], ["Чичи", 2.8], ["Рафаэла", 2.3], ["Сесилион", 1.5]],s:[["Зилонг", 2.4], ["Лейла", 2.2], ["Джонсон", 2.2], ["Сабер", 2.2], ["Нана", 2.1], ["Вейл", 2.1], ["Мия", 1.6]]},
+  {id:"chip",wr:47.4,c:[["Алиса", 3.6], ["Бейн", 3.1], ["Кармилла", 3.1], ["Мелисса", 2.7], ["Мартис", 2.6], ["Аврора", 2.1], ["Ханаби", 2.0], ["Луо И", 2.0], ["Ланселот", 1.9], ["Вексана", 1.5]],s:[["Хелкарт", 3.9], ["Зилонг", 3.7], ["Матильда", 3.2], ["Наталья", 2.7], ["Флорин", 2.2], ["Госсен", 2.1], ["Арлотт", 2.0], ["Новария", 1.9], ["Селена", 1.9]]},
+  {id:"grock",wr:46.8,c:[["Алиса", 3.6], ["Эсмеральда", 2.6], ["Кайя", 2.4], ["Ангела", 2.3], ["Ив", 2.2]],s:[["Одетта", 2.0], ["Лейла", 2.0], ["Джонсон", 1.8], ["Инь", 1.8], ["Акай", 1.7]]},
+  {id:"tigreal",wr:45.3,c:[["Алиса", 3.6], ["Икс.Борг", 2.9], ["Зетиан", 2.5], ["Валир", 2.4], ["Аулус", 2.4]],s:[["Зилонг", 2.7], ["Эстес", 2.7], ["Алукард", 2.1], ["Лесли", 2.0], ["Франко", 2.0], ["Джулиан", 1.5]]},
+  {id:"mathilda",wr:44.6,c:[["Эсмеральда", 4.7], ["Одетта", 3.4], ["Лолита", 3.0], ["Хуфра", 2.9], ["Мелисса", 2.8], ["Циклоп", 2.8], ["Алукард", 2.6]],s:[["Наталья", 4.9], ["Икс.Борг", 3.6], ["Валир", 3.1], ["Хелкарт", 2.8], ["Лилия", 2.5], ["Бенедетта", 2.5], ["Горд", 2.3], ["Грейнджер", 1.9], ["Зетиан", 1.5], ["Клинт", 1.4]]},
+  {id:"franco",wr:41.6,c:[["Ханзо", 2.7], ["Сан", 2.5], ["Пополь и Купа", 2.4], ["Атлас", 2.2], ["Джонсон", 2.1], ["Тигрил", 2.0]],s:[["Дигги", 2.7], ["Ангела", 2.7], ["Фанни", 2.5], ["Флорин", 2.5], ["Фрейя", 1.9]]}
+ ],
+ exp:[
+  {id:"masha",wr:60.3,c:[["Эстес", 3.4], ["Фрейя", 3.2], ["Мелисса", 2.5], ["Бруно", 2.2], ["Рафаэла", 2.0]],s:[["Глу", 3.0], ["Лесли", 2.9], ["Эйдора", 2.9], ["Чичи", 2.4], ["Ю Чжун", 2.3], ["Броуди", 2.3], ["Фарса", 1.9]]},
+  {id:"argus",wr:56.8,c:[["Теризла", 3.2], ["Баратс", 3.2], ["Уранус", 3.0], ["Руби", 2.3], ["Фредрин", 2.2]],s:[["Кэрри", 2.9], ["Люнокс", 2.8], ["Хелкарт", 2.4], ["Арлотт", 2.2], ["Сабер", 2.2], ["Гвиневра", 2.1]]},
+  {id:"sun",wr:54.0,c:[["Натан", 5.2], ["Джой", 3.8], ["Руби", 3.6], ["Марсель", 3.5], ["Кимми", 3.4], ["Алукард", 3.0], ["Фарамис", 2.8], ["Суё", 2.3], ["Баданг", 1.8], ["Аулус", 1.8]],s:[["Джавхед", 3.7], ["Дигги", 3.3], ["Харли", 3.0], ["Кэрри", 2.8], ["Сабер", 2.8], ["Ханзо", 2.7], ["Лейла", 2.7], ["Франко", 2.5], ["Лесли", 2.2]]},
+  {id:"aulus",wr:53.5,c:[["Алиса", 3.0], ["Ив", 2.4], ["Флорин", 2.4], ["Чжу Синь", 2.2], ["Эстес", 2.0]],s:[["Глу", 3.2], ["Минситтар", 2.6], ["Тигрил", 2.4], ["Наталья", 2.3], ["Сан", 1.8], ["Руби", 1.8], ["Эйдора", 1.6]]},
+  {id:"edith",wr:52.3,c:[["Лолита", 4.9], ["Беатрис", 2.6], ["Баксия", 2.4], ["Карина", 2.1], ["Ханзо", 1.9], ["Лейла", 1.8]],s:[["Алиса", 3.7], ["Харит", 3.7], ["Сильванна", 3.3], ["Матильда", 2.5], ["Клауд", 2.4], ["Фрейя", 1.7]]},
+  {id:"guinevere",wr:51.2,c:[["Ванван", 2.9], ["Дигги", 2.6], ["Джой", 2.5], ["Хуфра", 2.4], ["Аргус", 2.1]],s:[["Люнокс", 2.4], ["Кэрри", 1.9], ["Джулиан", 1.9], ["Эсмеральда", 1.7], ["Ангела", 1.6]]},
+  {id:"alice",wr:50.7,c:[["Ангела", 4.7], ["Кэрри", 4.1], ["Флорин", 4.0], ["Эстес", 3.9], ["Валир", 3.7], ["Эдит", 3.6], ["Дигги", 3.4], ["Баксия", 3.4], ["Ив", 3.1], ["Чичи", 3.0], ["Дайрот", 3.0], ["Тамуз", 2.5], ["Джулиан", 2.4], ["Харли", 2.4], ["Кимми", 2.3], ["Горд", 1.8], ["Лилия", 1.7]],s:[["Глу", 3.8], ["Тигрил", 3.6], ["Баратс", 3.6], ["Чип", 3.6], ["Хуфра", 3.4], ["Атлас", 3.3], ["Фарамис", 3.2], ["Фовиус", 3.1], ["Акай", 3.1], ["Джонсон", 3.0], ["Аулус", 3.0], ["Заск", 2.8], ["Грок", 2.8], ["Вексана", 2.7], ["Минотавр", 2.5], ["Сора", 2.1], ["Кадита", 2.1], ["Клинт", 1.3]]},
+  {id:"terizla",wr:50.5,c:[["Икс.Борг", 4.2], ["Валир", 2.3], ["Кэрри", 2.2], ["Ангела", 2.1], ["Ксавьер", 2.0]],s:[["Аргус", 3.2], ["Фовиус", 2.3], ["Одетта", 2.0], ["Вейл", 1.8], ["Лолита", 1.7]]},
+  {id:"badang",wr:50.2,c:[["Карина", 2.2], ["Лолита", 2.2], ["Эсмеральда", 2.1], ["Хуфра", 2.0], ["Дигги", 1.8]],s:[["Фанни", 2.7], ["Сан", 1.8], ["Зилонг", 1.6], ["Хаябуса", 1.2], ["Хелкарт", 1.1]]},
+  {id:"khaleed",wr:50.1,c:[["Фовиус", 2.8], ["Ив", 2.8], ["Люнокс", 2.6], ["Фредрин", 2.5], ["Леоморд", 2.0]],s:[["Инь", 3.3], ["Вейл", 2.8], ["Лолита", 2.4], ["Хелкарт", 2.0], ["Ханаби", 2.0], ["Мия", 1.9]]},
+  {id:"paquito",wr:50.0,c:[["Эсмеральда", 3.0], ["Хуфра", 2.4], ["Фовиус", 2.0], ["Мелисса", 1.9], ["Фредрин", 1.8]],s:[["Наталья", 3.5], ["Икс.Борг", 3.0], ["Карина", 2.7], ["Ванван", 1.7], ["Бенедетта", 1.7]]},
+  {id:"xborg",wr:49.9,c:[["Матильда", 3.8], ["Бенедетта", 3.8], ["Хелкарт", 3.7], ["Флорин", 3.5], ["Наталья", 3.3], ["Линг", 3.3], ["Зилонг", 3.2], ["Пакито", 3.1], ["Валентина", 3.1], ["Чу", 3.0], ["Арлотт", 2.8], ["Джой", 2.6], ["Алдос", 2.3], ["Хирара", 2.3], ["Нолан", 2.3], ["Селена", 1.9], ["Госсен", 1.8], ["Кагура", 1.7], ["Суё", 1.5], ["Чанъэ", 1.5]],s:[["Баратс", 5.1], ["Баксия", 5.0], ["Теризла", 4.2], ["Мартис", 3.8], ["Фовиус", 3.8], ["Хилос", 3.7], ["Бальмонд", 3.6], ["Руби", 3.3], ["Кармилла", 3.2], ["Альфа", 3.1], ["Гатоткача", 3.1], ["Тигрил", 2.9], ["Чичи", 2.8], ["Фредрин", 2.3], ["Минситтар", 2.0], ["Вексана", 1.9]]},
+  {id:"uranus",wr:49.4,c:[["Дайрот", 3.1], ["Кэрри", 3.0], ["Ив", 2.9], ["Ангела", 2.7], ["Алдос", 2.5], ["Кимми", 2.4]],s:[["Гатоткача", 3.0], ["Аргус", 2.9], ["Инь", 2.7], ["Заск", 2.1], ["Грейнджер", 2.0], ["И Сун-Син", 1.9]]},
+  {id:"cici",wr:49.4,c:[["Аамон", 4.5], ["Эстес", 3.8], ["Дигги", 2.8], ["Зилонг", 2.8], ["Икс.Борг", 2.8], ["Арлотт", 2.7], ["Рафаэла", 2.7], ["Маша", 2.4], ["Сильванна", 2.1]],s:[["Тамуз", 4.6], ["Бальмонд", 4.5], ["Алиса", 3.0], ["Хилос", 2.8], ["Глу", 2.7], ["Лукас", 2.3], ["Ланселот", 2.2], ["Ю Чжун", 1.8], ["Лилия", 1.7], ["Лапу-Лапу", 1.6]]},
+  {id:"dyrroth",wr:49.4,c:[["Джонсон", 2.1], ["Нана", 1.9], ["Минситтар", 1.8], ["Сильванна", 1.8], ["Тамуз", 1.7]],s:[["Эсмеральда", 3.4], ["Уранус", 3.2], ["Алиса", 3.0], ["Фарамис", 2.4], ["Москов", 2.1]]},
+  {id:"yuzhong",wr:49.0,c:[["Маша", 2.3], ["Ванван", 1.8], ["Чичи", 1.7], ["Клауд", 1.6], ["Харит", 1.6]],s:[["Глу", 2.5], ["Сильванна", 2.1], ["Минситтар", 2.0], ["Атлас", 1.7], ["Пополь и Купа", 1.6]]},
+  {id:"thamuz",wr:48.9,c:[["Чичи", 4.6], ["Валир", 2.8], ["Ванван", 2.5], ["Бенедетта", 2.3], ["И Сун-Син", 2.1]],s:[["Алукард", 2.6], ["Алиса", 2.5], ["Сабер", 2.0], ["Одетта", 2.0], ["Дигги", 1.9], ["Дайрот", 1.7]]},
+  {id:"ruby",wr:48.9,c:[["Икс.Борг", 3.3], ["Фовиус", 3.1], ["Лолита", 2.0], ["Аулус", 1.8], ["Горд", 1.7], ["Клинт", 1.4]],s:[["Сан", 3.6], ["Глу", 3.4], ["Аргус", 2.3], ["Карина", 2.1], ["Джой", 2.1]]},
+  {id:"lapulapu",wr:48.2,c:[["Эсмеральда", 3.5], ["Харит", 2.0], ["Матильда", 1.9], ["Клауд", 1.8], ["Чичи", 1.5]],s:[["Сильванна", 2.8], ["Пополь и Купа", 2.7], ["Ханаби", 2.3], ["Аргус", 2.1], ["Вейл", 1.9], ["Джулиан", 1.4]]},
+  {id:"phoveus",wr:48.1,c:[["Минситтар", 4.0], ["Икс.Борг", 3.8], ["Баратс", 3.5], ["Альфа", 3.4], ["Алиса", 3.1], ["Бейн", 3.1], ["Теризла", 2.3], ["Горд", 2.3], ["Бальмонд", 2.1], ["Джулиан", 2.1], ["Лейла", 2.0]],s:[["Ванван", 6.6], ["Харит", 4.9], ["Фрейя", 4.6], ["Алукард", 3.2], ["Руби", 3.1], ["Бенедетта", 3.0], ["Халид", 2.8], ["Чу", 2.8], ["Лукас", 2.6], ["Джой", 2.5], ["Хирара", 2.4], ["Кагура", 2.3], ["Калея", 2.0], ["Арлотт", 2.0], ["Сора", 1.9], ["Пакито", 1.8], ["Кадита", 1.5]]},
+  {id:"arlott",wr:47.5,c:[["Заск", 2.4], ["Аргус", 2.2], ["Джавхед", 2.2], ["Фовиус", 2.0], ["Чип", 2.0], ["Лукас", 1.9]],s:[["Икс.Борг", 2.8], ["Чичи", 2.7], ["Чжу Синь", 2.3], ["Кимми", 2.1], ["Натан", 2.1], ["Нолан", 1.7]]},
+  {id:"esmeralda",wr:46.9,c:[["Люнокс", 3.4], ["Кэрри", 3.3], ["Дайрот", 3.2], ["Натан", 3.1], ["Алиса", 2.6], ["Фредрин", 2.4], ["Джулиан", 2.4], ["Гвиневра", 1.8]],s:[["Лолита", 5.7], ["Матильда", 4.3], ["Марсель", 3.7], ["Дигги", 3.6], ["Инь", 3.6], ["Алдос", 3.5], ["Лапу-Лапу", 3.5], ["Джавхед", 3.3], ["Фовиус", 3.3], ["Акай", 3.1], ["Хильда", 3.0], ["Пакито", 3.0], ["Грок", 2.8], ["Чу", 2.5], ["Чанъэ", 2.3], ["Баданг", 2.2], ["Грейнджер", 1.9], ["Фрейя", 1.8], ["Роджер", 1.7]]},
+  {id:"gatotkaca",wr:45.3,c:[["Икс.Борг", 3.1], ["Уранус", 3.0], ["Лесли", 2.9], ["Баксия", 2.8], ["Матильда", 2.2]],s:[["Одетта", 3.1], ["Сабер", 2.5], ["Мия", 2.4], ["Зилонг", 2.0], ["Аврора", 1.7]]},
+  {id:"chou",wr:45.1,c:[["Фовиус", 2.8], ["Эсмеральда", 2.4], ["Циклоп", 2.4], ["Хуфра", 1.9], ["Лукас", 1.8]],s:[["Икс.Борг", 3.0], ["Фанни", 2.5], ["Иксия", 2.0], ["Беатрис", 2.0], ["Наталья", 1.7], ["Лилия", 1.6]]}
+ ],
+ jungle:[
+  {id:"ling",wr:52.6,c:[["Наталья", 5.5], ["Сабер", 4.0], ["Лукас", 3.2], ["Флорин", 3.1], ["Бруно", 3.1], ["Карина", 3.0], ["Мелисса", 2.8], ["Фрейя", 2.1], ["Валентина", 2.0]],s:[["Глу", 3.6], ["Икс.Борг", 3.3], ["Ханзо", 3.2], ["Атлас", 3.2], ["Сильванна", 3.1], ["Горд", 2.7], ["Новария", 2.7]]},
+  {id:"barats",wr:51.6,c:[["Икс.Борг", 5.1], ["Алиса", 3.6], ["Горд", 3.4], ["Ив", 3.2], ["Валир", 2.6], ["Альфа", 2.6], ["Бальмонд", 2.4], ["Лилия", 1.9], ["Сесилион", 1.8]],s:[["Фовиус", 3.5], ["Сильванна", 3.4], ["Аргус", 3.2], ["Алукард", 2.9], ["Зилонг", 2.2], ["Эйдора", 2.2], ["Броуди", 1.9]]},
+  {id:"fredrinn",wr:51.3,c:[["Валир", 4.0], ["Горд", 2.7], ["Кэрри", 2.4], ["Икс.Борг", 2.3], ["Альфа", 2.2], ["Сесилион", 1.6], ["Аврора", 1.5]],s:[["Глу", 3.5], ["Алукард", 3.2], ["Люнокс", 2.7], ["Халид", 2.5], ["Джой", 2.3], ["Аргус", 2.2], ["Хаябуса", 2.1], ["Селена", 1.8], ["Пакито", 1.8]]},
+  {id:"saber",wr:51.2,c:[["Бальмонд", 3.4], ["Леоморд", 3.2], ["Мия", 2.9], ["Баксия", 2.9], ["Сан", 2.8], ["Джонсон", 2.7], ["Альфа", 2.6], ["Ханаби", 2.6], ["Алукард", 2.6], ["Гатоткача", 2.5], ["Белерик", 2.5], ["Мартис", 2.4], ["Хилос", 2.4], ["Аргус", 2.2], ["Нана", 2.1], ["Тамуз", 2.0], ["Джавхед", 1.9]],s:[["Линг", 4.0], ["Нолан", 4.0], ["Наталья", 3.8], ["Ив", 2.9], ["Люнокс", 2.9], ["Валентина", 2.7], ["Хаябуса", 2.6], ["Бенедетта", 2.5], ["Хирара", 2.4], ["Броуди", 2.3], ["Иритель", 2.3], ["Кайя", 2.1], ["Москов", 2.1], ["Клинт", 1.5]]},
+  {id:"aamon",wr:50.4,c:[["Глу", 4.6], ["Лолита", 3.8], ["Хаябуса", 2.7], ["Сильванна", 2.7], ["Атлас", 2.6], ["Госсен", 2.5]],s:[["Чичи", 4.5], ["Марсель", 3.1], ["Клауд", 2.9], ["Бруно", 2.5], ["Ксавьер", 2.4]]},
+  {id:"akai",wr:50.1,c:[["Марсель", 3.2], ["Алиса", 3.1], ["Эсмеральда", 2.8], ["Кайя", 2.8], ["Циклоп", 2.5], ["Ханаби", 2.0]],s:[["Алукард", 2.2], ["Сильванна", 1.9], ["Грейнджер", 1.9], ["Харит", 1.9], ["Нана", 1.9]]},
+  {id:"hanzo",wr:49.9,c:[["Наталья", 4.6], ["Линг", 3.4], ["Хирара", 2.7], ["Сан", 2.5], ["Хелкарт", 2.3], ["Обсидия", 2.1]],s:[["Дигги", 3.5], ["Иксия", 3.2], ["Франко", 2.8], ["Бальмонд", 2.5], ["Альфа", 2.2], ["Сесилион", 1.9], ["Бейн", 1.8], ["Фарса", 1.4]]},
+  {id:"julian",wr:49.9,c:[["Гвиневра", 1.9], ["Минситтар", 1.7], ["Баксия", 1.6], ["Тигрил", 1.5], ["Хилос", 1.4]],s:[["Фарамис", 3.0], ["Алиса", 2.4], ["Эсмеральда", 2.3], ["Фовиус", 2.1], ["Дигги", 2.1]]},
+  {id:"leomord",wr:49.9,c:[["Валир", 3.2], ["Чжу Синь", 2.7], ["Кэрри", 2.7], ["Мелисса", 2.2], ["Ангела", 2.0]],s:[["Лолита", 3.8], ["Сабер", 3.1], ["Наталья", 2.5], ["Белерик", 2.4], ["Пополь и Купа", 2.3], ["Эйдора", 1.9], ["Роджер", 1.8]]},
+  {id:"nolan",wr:49.6,c:[["Сабер", 3.9], ["Наталья", 3.8], ["Хаябуса", 2.1], ["Джавхед", 2.0], ["Хелкарт", 1.7]],s:[["Эстес", 4.0], ["Чжу Синь", 2.6], ["Икс.Борг", 2.5], ["Ив", 2.5], ["Баксия", 2.3], ["Натан", 2.2], ["Бейн", 2.0]]},
+  {id:"suyou",wr:49.6,c:[["Харит", 2.2], ["Харли", 1.7], ["Одетта", 1.6], ["Ив", 1.5], ["Госсен", 1.5]],s:[["Наталья", 2.7], ["Сан", 2.3], ["Икс.Борг", 1.5], ["Хирара", 1.4], ["Инь", 1.4]]},
+  {id:"yin",wr:49.6,c:[["Ванван", 5.0], ["Эсмеральда", 3.6], ["Уранус", 3.2], ["Иритель", 2.7], ["Халид", 2.6], ["Хильда", 2.5], ["Ланселот", 2.3], ["Хилос", 2.1], ["Хирара", 2.1], ["Обсидия", 1.9], ["Заск", 1.9], ["Грок", 1.8], ["Роджер", 1.7], ["Суё", 1.5]],s:[["Фарамис", 3.1], ["Минситтар", 2.9], ["Флорин", 2.8], ["Дигги", 2.8], ["Иксия", 2.7], ["Аврора", 2.1], ["Луо И", 1.9], ["Калея", 1.7]]},
+  {id:"yisunshin",wr:49.1,c:[["Лолита", 1.9], ["Уранус", 1.8], ["Карина", 1.7], ["Ксавьер", 1.4], ["Эсмеральда", 1.3]],s:[["Тамуз", 2.1], ["Хуфра", 1.9], ["Бенедетта", 1.4], ["Нана", 1.4], ["Мелисса", 1.3]]},
+  {id:"alpha",wr:48.9,c:[["Бенедетта", 3.7], ["Икс.Борг", 3.1], ["Валир", 2.6], ["Дигги", 2.5], ["Кайя", 2.2], ["Лилия", 2.1], ["Ланселот", 1.7], ["Чанъэ", 1.4]],s:[["Фовиус", 3.4], ["Баратс", 2.6], ["Одетта", 2.6], ["Сабер", 2.6], ["Фредрин", 2.2]]},
+  {id:"karina",wr:48.7,c:[["Грейнджер", 4.7], ["Броуди", 4.0], ["Клинт", 3.0], ["Глу", 2.9], ["Люнокс", 2.8], ["Пакито", 2.7], ["Хирара", 2.6], ["Харит", 2.5], ["Фарамис", 2.4], ["Руби", 2.1], ["Сора", 2.0]],s:[["Наталья", 4.5], ["Кимми", 3.3], ["Марсель", 3.0], ["Линг", 3.0], ["Хелкарт", 2.9], ["Зилонг", 2.7], ["Алдос", 2.6], ["Ханаби", 2.5], ["Баданг", 2.2], ["Бруно", 2.1], ["Минситтар", 2.1], ["И Сун-Син", 1.7]]},
+  {id:"joy",wr:48.6,c:[["Москов", 4.1], ["Марсель", 3.1], ["Циклоп", 2.9], ["Мелисса", 2.8], ["Броуди", 2.4], ["Руби", 2.2], ["Харли", 2.0], ["Мартис", 1.7]],s:[["Сан", 3.8], ["Лолита", 3.4], ["Икс.Борг", 2.9], ["Лилия", 2.8], ["Ив", 2.5], ["Ханаби", 2.5], ["Луо И", 2.3], ["Гвиневра", 2.2], ["Суё", 1.9]]},
+  {id:"gusion",wr:48.5,c:[["Лолита", 3.0], ["Чип", 2.4], ["Роджер", 2.2], ["Хуфра", 2.1], ["Глу", 1.8]],s:[["Ив", 2.3], ["Валир", 2.3], ["Аамон", 2.2], ["Икс.Борг", 2.1], ["Наталья", 1.7], ["Суё", 1.6]]},
+  {id:"roger",wr:48.2,c:[["Ив", 3.0], ["Леоморд", 2.3], ["Чжу Синь", 2.0], ["Пополь и Купа", 1.9], ["Хирара", 1.7]],s:[["Харли", 2.6], ["Госсен", 2.3], ["Сильванна", 1.8], ["Инь", 1.7], ["Хелкарт", 1.7]]},
+  {id:"hayabusa",wr:48.1,c:[["Сабер", 2.6], ["Фредрин", 2.1], ["Лолита", 2.0], ["Заск", 1.8], ["Эйдора", 1.8], ["Баданг", 1.3]],s:[["Аамон", 2.9], ["Чжу Синь", 2.2], ["Кэрри", 2.2], ["Ив", 2.2], ["Икс.Борг", 2.1], ["Нолан", 2.1], ["Сесилион", 1.7]]},
+  {id:"helcurt",wr:47.7,c:[["Чип", 3.9], ["Обсидия", 2.9], ["Карина", 2.9], ["Хильда", 2.8], ["Наталья", 2.7], ["Алдос", 2.5], ["Аргус", 2.4], ["Матильда", 2.4], ["Эйдора", 2.3], ["Лукас", 2.1], ["Халид", 2.0], ["Калея", 1.9], ["Зетиан", 1.9], ["Джавхед", 1.8], ["Роджер", 1.7], ["Баданг", 1.1]],s:[["Икс.Борг", 3.7], ["Валир", 3.6], ["Ксавьер", 3.2], ["Горд", 2.8], ["Ханзо", 2.6], ["Бейн", 2.0], ["Луо И", 1.8], ["Сесилион", 1.4]]},
+  {id:"martis",wr:47.2,c:[["Икс.Борг", 3.8], ["Минситтар", 3.0], ["Марсель", 2.2], ["Бальмонд", 2.1], ["Уранус", 1.6], ["Чанъэ", 1.5]],s:[["Чип", 2.6], ["Сабер", 2.4], ["Москов", 1.9], ["Хуфра", 1.8], ["Сора", 1.7]]},
+  {id:"baxia",wr:45.5,c:[["Икс.Борг", 5.0], ["Кэрри", 3.5], ["Беатрис", 3.0], ["Бенедетта", 3.0], ["Бейн", 2.9], ["Ханзо", 2.8], ["Нолан", 2.4], ["Клинт", 2.0]],s:[["Обсидия", 3.5], ["Алиса", 3.4], ["Заск", 3.2], ["Сабер", 2.9], ["Гатоткача", 2.8], ["Фрейя", 2.7], ["Эдит", 2.4], ["Лукас", 2.3], ["Джулиан", 1.6]]},
+  {id:"lancelot",wr:43.1,c:[["Ангела", 3.3], ["Флорин", 2.6], ["Чичи", 2.2], ["Бруно", 1.9], ["Алукард", 1.8]],s:[["Атлас", 2.6], ["Инь", 2.5], ["Чип", 1.9], ["Альфа", 1.7], ["Грейнджер", 1.7], ["Аврора", 1.3]]},
+  {id:"fanny",wr:42.8,c:[["Москов", 3.1], ["Бруно", 2.9], ["Баданг", 2.7], ["Фарамис", 2.6], ["Чу", 2.5], ["Франко", 2.5], ["Калея", 2.5], ["Лукас", 2.1]],s:[["Грейнджер", 3.5], ["Глу", 3.2], ["Клинт", 2.9], ["Ив", 2.8], ["Атлас", 2.7], ["Кимми", 2.5]]}
+ ]
+};
+
+// Русские названия как в игре + тип значка [название, глиф, цвет]
+const IT={
+ "Swift Boots":["Сапоги спешки","boot","b"],"Tough Boots":["Прочные сапоги","boot","b"],"Magic Shoes":["Магические ботинки","boot","b"],"Arcane Boots":["Сапоги заклинателя","boot","b"],"Demon Boots":["Ботинки демона","boot","b"],
+ "Hunter Strike":["Удар охотника","blade","p"],"Blade of Despair":["Клинок отчаяния","blade","p"],"Endless Battle":["Бесконечная битва","blade","p"],"Demon Hunter Sword":["Меч охотника на демонов","blade","p"],
+ "Malefic Roar":["Злобный рык","pierce","p"],"Malefic Gun":["Губительный пулемёт","pierce","p"],
+ "Sea Halberd":["Трезубец","spear","p"],"Great Dragon Spear":["Копьё Великого дракона","spear","p"],
+ "Berserker's Fury":["Ярость берсерка","bow","p"],"Windtalker":["Говорящий с ветром","wind","p"],"Haas's Claws":["Когти Хааса","claw","p"],
+ "Corrosion Scythe":["Коса коррозии","scythe","p"],"Golden Staff":["Золотой посох","wand","p"],
+ "Wind of Nature":["Ветер природы","wind","d"],"Rose Gold Meteor":["Золотой метеор","shield","d"],"Immortality":["Бессмертие","shield","d"],"Winter Crown":["Зимняя корона","shield","d"],"Athena's Shield":["Щит Афины","shield","d"],
+ "Feather of Heaven":["Райское перо","wand","m"],"Genius Wand":["Палочка гения","wand","m"],"Holy Crystal":["Священный кристалл","gem","m"],"Divine Glaive":["Божественный меч","blade","m"],
+ "Wishing Lantern":["Фонарь желаний","gem","m"],"Starlium Scythe":["Старлиумовая коса","scythe","m"],"Blood Wings":["Кровавые крылья","gem","m"],
+ "Clock of Destiny":["Часы судьбы","gem","m"],"Lightning Truncheon":["Жезл молний","wand","m"],"Glowing Wand":["Пылающий жезл","wand","m"],"Ice Queen Wand":["Жезл снежной королевы","wand","m"],
+ "Enchanted Talisman":["Зачарованный талисман","gem","m"],"Concentrated Energy":["Концентрированная энергия","gem","m"],
+ "Flask of the Oasis":["Фляга Оазиса","gem","m"],"Fleeting Time":["Мимолётное время","gem","m"],"Blade of the Heptaseas":["Клинок семи морей","blade","p"],
+ "Dominance Ice":["Господство льда","shield","d"],"Antique Cuirass":["Древняя кираса","shield","d"],"Guardian Helmet":["Защитный шлем","shield","d"],
+ "War Axe":["Топор войны","blade","p"],"Brute Force Breastplate":["Кираса грубой силы","shield","d"],"Queen's Wings":["Крылья королевы","shield","d"],"Thunder Belt":["Штормовой пояс","shield","d"],
+ "Cursed Helmet":["Проклятый шлем","shield","d"],"Blade Armor":["Шипованная броня","shield","d"],"Oracle":["Оракул","shield","d"],"Radiant Armor":["Сияющая броня","shield","d"]
+};
+const G={
+ boot:"M8 3h5v9l6 3v4H6v-4l2-2z",
+ blade:"M19 3l2 2-10 10-3 1 1-3zM6 15l3 3M4 20l3-3",
+ spear:"M4 20L15 9M13 4h7v7l-3-1-3-3z",
+ bow:"M7 3a12 12 0 0 1 0 18M7 3v18M3 12h17M17 9l3 3-3 3",
+ claw:"M6 20C6 12 8 6 11 3M11 20c0-7 2-12 5-15M16 20c0-5 1-9 4-12",
+ scythe:"M6 21L16 4M16 4c-5-1-9 1-12 5 4-2 8-2 11-1",
+ wand:"M5 20L14 9M17 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1z",
+ gem:"M12 3l7 7-7 11-7-11zM5 10h14",
+ shield:"M12 3l8 3v6c0 5-3 8-8 9-5-1-8-4-8-9V6z",
+ wind:"M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7",
+ pierce:"M3 12h14M13 6l6 6-6 6M21 5v14"
+};
+const SP={Flicker:"Вспышка",Inspire:"Вдохновение",Retribution:"Возмездие"};
+const SIT={
+ gold:[["Wind of Nature","Убийцы и стрелки с физическим уроном ныряют на тебя. Даёт стрелку 2 секунды иммунитета к физ. урону."],
+  ["Sea Halberd","У врага Эстес, Флорин или герои с сильным вампиризмом. Режет лечение."],
+  ["Malefic Roar","Два и больше танков набирают броню. Бери третьим-четвёртым предметом. Вариант с дальностью: «Губительный пулемёт»."],
+  ["Rose Gold Meteor","Тебя убивают маги за одну прокастовку. Ставь вместо последнего предмета урона."],
+  ["Immortality","Игра затянулась за 18 минут. Продай ботинки и купи его шестым слотом."]],
+ mid:[["Winter Crown","На тебя ныряют убийцы. Активируй, чтобы на 2 секунды стать неуязвимым и переждать их прокаст."],
+  ["Athena's Shield","Вражеский маг убивает тебя одной прокастовкой. Ставь вместо последнего предмета урона."],
+  ["Divine Glaive","Враги собирают магическую защиту. Бери его раньше, третьим-четвёртым предметом."],
+  ["Ice Queen Wand","Врагов трудно догнать или удержать. Умения начинают замедлять."],
+  ["Immortality","Игра затянулась за 18 минут. Купи шестым слотом вместо ботинок."]],
+ roam:[["Dominance Ice","У врага много лечения или стрелки с высокой скоростью атаки. Режет и то и другое."],
+  ["Athena's Shield","Вражеские маги убивают прокастом. Бери вторым-третьим предметом."],
+  ["Antique Cuirass","Основной урон врага физический и идёт от умений."],
+  ["Blade Armor","У врага стрелки с критом: возвращает им часть урона."],
+  ["Radiant Armor","Маг бьёт постоянным уроном, а не одной прокастовкой."],
+  ["Immortality","Последним слотом, чтобы пережить первый заход в поздней игре."]],
+ exp:[["Sea Halberd","Соперник на линии лечится от урона или у врага есть лекарь. Режет лечение."],
+  ["Dominance Ice","Против героев со скоростью атаки и лечением: Аргус, Сан, Маша."],
+  ["Athena's Shield","Вражеские маги убивают прокастом."],
+  ["Radiant Armor","Маг бьёт постоянным уроном, а не одной прокастовкой."],
+  ["Brute Force Breastplate","Затяжные драки: каждое попадание умением даёт защиту и скорость."],
+  ["Immortality","Последним слотом, чтобы пережить первый заход в поздней игре."]],
+ jungle:[["Malefic Roar","Два и больше танков набирают броню. Бери третьим предметом."],
+  ["Sea Halberd","У врага Эстес, Флорин или герои с сильным восстановлением."],
+  ["Winter Crown","Тебя ждут с контролем после захода. Активируй, чтобы переждать прокаст."],
+  ["Athena's Shield","Вражеский маг убивает тебя до того, как ты добрался до цели."],
+  ["Immortality","Последним слотом: позволяет ошибиться один раз в поздней игре."]]
+};
+const LANES={
+ gold:{title:"линии золота",order:ORDER_G,E:EG,def:"brody"},
+ mid:{title:"мида",order:ORDER_M,E:EM,def:"valir"},
+ roam:{title:"роума",order:ORDER_R,E:ER,def:"marcel"},
+ exp:{title:"линии опыта",order:ORDER_X,E:EX,def:"masha"},
+ jungle:{title:"леса",order:ORDER_J,E:EJ,def:"ling"}
+};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=n=>n.toFixed(1).replace(".",",");
+const fmt=n=>"+"+num(n)+" п.п.";
+const sgn=n=>(n>=0?"+":"−")+num(Math.abs(n));
+const ico=en=>{const t=IT[en];return `<span class="ico ${t[2]}" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${G[t[1]]}"/></svg></span>`;};
+const ava=(id,big)=>{const ru=H[id][0];let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;
+ const ab=id==="popol"?"ПК":id==="luoyi"?"ЛИ":id==="zhuxin"?"ЧС":ru.slice(0,2);
+ return `<span class="ava${big?" big":""}" style="background:hsl(${h} 42% 38%)" aria-hidden="true">${ab}</span>`;};
+
+const st={lane:"gold",mode:"known",enemy:{gold:"brody",mid:"valir",roam:"marcel",exp:"masha",jungle:"ling"},pick:0,sel:{gold:new Set(),mid:new Set(),roam:new Set(),exp:new Set(),jungle:new Set()},bpick:0};
+
+function buildBlock(id){
+  const b=B[id];
+  return `<div><h2 class="sp">Закуп на всю игру: ${esc(H[id][0])}</h2>
+      <ol class="build">${b.i.map(x=>`<li>${ico(x)}<span>${esc(IT[x][0])}</span></li>`).join("")}</ol></div>
+    <div class="meta"><span>Заклинание: <b>${esc(SP[b.s])}</b></span>${b.r?`<span>${esc(b.rk||"Благословение роума")}: <b>${esc(b.r)}</b></span>`:""}</div>
+    <p class="note">${esc(b.n)}</p>`;
+}
+
+function drawGrid(){
+  const L=LANES[st.lane], q=$("#q").value.trim().toLowerCase();
+  let shown=0;
+  $("#grid").innerHTML=L.order.map(id=>{
+    const [ru,en]=H[id];
+    if(q && !ru.toLowerCase().includes(q) && !en.toLowerCase().includes(q)) return "";
+    shown++;
+    return `<button class="chip" type="button" data-id="${id}" aria-pressed="${id===st.enemy[st.lane]}">${ava(id)}<span>${esc(ru)}<small>${esc(en)}</small></span></button>`;
+  }).join("");
+  $("#empty").hidden=shown>0;
+}
+
+function phaseBox(v,label,time){
+  const cls=v>0?"hi":v<0?"lo":"";
+  const txt=v>0?"сильный":v<0?"слабый":"ровно";
+  return `<div class="${cls}"><b>${label}</b>${time}<br>${txt}</div>`;
+}
+
+function drawKnown(){
+  const enemy=st.enemy[st.lane], d=LANES[st.lane].E[enemy], ru=H[enemy][0];
+  if(st.pick>=d.p.length) st.pick=0;
+  const [pid,edge,w,kind]=d.p[st.pick]; const why=w||WK[pid]||"";
+  const tag=edge!=null?`<span class="tag m">${fmt(edge)} к винрейту</span>`:`<span class="tag k">${kind==="wr"?"по винрейту":"по механике"}</span>`;
+  const alts=d.p.length>1?`<div><h2 class="sp">Варианты</h2><div class="alts">${d.p.map((x,i)=>
+    `<button class="alt" type="button" data-i="${i}" aria-pressed="${i===st.pick}">${ava(x[0])}${esc(H[x[0]][0])}<span class="e">${x[1]!=null?fmt(x[1]):x[3]==="wr"?"винр.":"мех."}</span></button>`).join("")}</div></div>`:"";
+  const avoid=d.a.length?`<div><h2 class="sp">Не бери против него</h2><div class="rows">${d.a.map(x=>`<span class="pill bad">${esc(x[0])}<i>−${num(x[1])}</i></span>`).join("")}</div></div>`:"";
+  const flat=d.ph.every(v=>v===0);
+  $("#result").innerHTML=`
+    <div class="versus">Против: <b>${esc(ru)}</b></div>
+    <div class="verdict">${ava(pid,true)}<span class="name">Бери: ${esc(H[pid][0])}</span>${tag}</div>
+    <p class="why">${esc(why)}</p>
+    ${alts}
+    ${buildBlock(pid)}
+    <div><h2 class="sp">Когда ${esc(ru)} опасен</h2>
+      ${flat?`<p class="note">Заметной разницы между стадиями игры нет.</p>`:`<div class="phase">${phaseBox(d.ph[0],"Начало","0–10 мин")}${phaseBox(d.ph[1],"Середина","10–16 мин")}${phaseBox(d.ph[2],"Поздняя","16+ мин")}</div>`}</div>
+    <div><h2 class="sp">Как играть</h2><ul class="plain">${d.tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+    <div><h2 class="sp">Попроси у команды</h2><div class="rows">${d.t.map(x=>`<span class="pill">${esc(x[0])}<i>${fmt(x[1])}</i></span>`).join("")}</div></div>
+    ${avoid}`;
+}
+
+function poolNames(){
+  const s=new Set();
+  for(const c of BL[st.lane]){c.c.forEach(x=>s.add(x[0]));c.s.forEach(x=>s.add(x[0]));}
+  return [...s].sort((a,b)=>a.localeCompare(b,"ru"));
+}
+function drawPool(){
+  const q=$("#q2").value.trim().toLowerCase(), sel=st.sel[st.lane];
+  const names=poolNames().filter(n=>!q||n.toLowerCase().includes(q));
+  $("#pool").innerHTML=names.length?names.map(n=>`<button class="tog" type="button" data-n="${esc(n)}" aria-pressed="${sel.has(n)}">${esc(n)}</button>`).join("")
+    :`<span class="empty">По этому герою нет статистики против героев из списка. Он не влияет на оценку.</span>`;
+  $("#selrow").innerHTML=sel.size?`<span>Отмечено: ${sel.size}</span><button class="link" type="button" id="clr">Сбросить</button>`:"";
+}
+function rank(){
+  const sel=st.sel[st.lane];
+  return BL[st.lane].map(c=>{
+    let sc=c.wr-50; const up=[],dn=[];
+    for(const [n,e] of c.s) if(sel.has(n)){sc+=e;up.push([n,e]);}
+    for(const [n,e] of c.c) if(sel.has(n)){sc-=e;dn.push([n,e]);}
+    return {c,sc,up,dn};
+  }).sort((a,b)=>b.sc-a.sc);
+}
+function drawBlind(){
+  const sel=st.sel[st.lane], r=rank();
+  if(st.bpick>=Math.min(r.length,12)) st.bpick=0;
+  const x=r[st.bpick], id=x.c.id, any=sel.size>0;
+  const tag=any?`<span class="tag ${x.sc>=0?"m":"k"}">оценка ${sgn(x.sc)}</span>`:`<span class="tag k">винрейт ${num(x.c.wr)}%</span>`;
+  const lines=[`<li class="${x.c.wr>=50?"up":"dn"}"><b>${sgn(x.c.wr-50)}</b><span>Винрейт ${num(x.c.wr)}% за 7 дней, все ранги</span></li>`]
+    .concat(x.up.map(([n,e])=>`<li class="up"><b>+${num(e)}</b><span>Силён против: ${esc(n)}</span></li>`))
+    .concat(x.dn.map(([n,e])=>`<li class="dn"><b>−${num(e)}</b><span>Его контрит: ${esc(n)}</span></li>`));
+  const noHit=any&&!x.up.length&&!x.dn.length?`<p class="note">По отмеченным врагам у этого героя нет измеренных матчапов, оценка равна винрейту.</p>`:"";
+  $("#result").innerHTML=`
+    <div class="versus">Слепой пик на <b>${{gold:"линию золота",mid:"мид",roam:"роум",exp:"линию опыта",jungle:"лес"}[st.lane]}</b>${any?`, у врага отмечено: <b>${[...sel].map(esc).join(", ")}</b>`:""}</div>
+    <div class="verdict">${ava(id,true)}<span class="name">Бери: ${esc(H[id][0])}</span>${tag}</div>
+    ${x.c.risk?`<p class="why"><span class="tag w">риск</span> ${esc(x.c.risk)} Бери, если вражеский герой этой линии уже не они.</p>`:(st.lane!=="gold"&&st.lane!=="mid")?`<p class="why">Здесь в рейтинге все герои линии. Отмечай открытых врагов, и рейтинг пересчитается под их состав.</p>`:`<p class="why">На своей линии у этого героя нет измеренных контрпиков, поэтому его можно брать, не видя соперника.</p>`}
+    <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.join("")}</ul>${noHit}</div>
+    <div><h2 class="sp">Рейтинг для этого состава</h2><div class="alts">${r.slice(0,12).map((y,i)=>
+      `<button class="alt" type="button" data-b="${i}" aria-pressed="${i===st.bpick}">${ava(y.c.id)}${esc(H[y.c.id][0])}<span class="e">${sgn(y.sc)}</span></button>`).join("")}</div></div>
+    ${buildBlock(id)}
+    <div><h2 class="sp">Кого опасаться и банить</h2><div class="rows">${x.c.c.map(y=>`<span class="pill bad">${esc(y[0])}<i>−${num(y[1])}</i></span>`).join("")}</div></div>
+    <div><h2 class="sp">Против кого он силён</h2><div class="rows">${x.c.s.map(y=>`<span class="pill">${esc(y[0])}<i>+${num(y[1])}</i></span>`).join("")}</div></div>`;
+}
+
+function setHash(){
+  const h=st.lane+"-"+(st.mode==="blind"?"blind":st.enemy[st.lane]);
+  try{ if(location.hash!=="#"+h) history.replaceState(null,"","#"+h); }catch(e){ try{location.hash=h;}catch(_){} }
+}
+function draw(scroll){
+  document.querySelectorAll("[data-lane]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lane===st.lane));
+  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===st.mode));
+  $("#laneTitle").textContent=LANES[st.lane].title;
+  const blind=st.mode==="blind";
+  $("#pickKnown").hidden=blind; $("#pickBlind").hidden=!blind;
+  if(blind){drawPool();drawBlind();}else{drawGrid();drawKnown();}
+  $("#sit").innerHTML=SIT[st.lane].map(([en,t])=>`<div>${ico(en)}<p><b>${esc(IT[en][0])}</b>${esc(t)}</p></div>`).join("");
+  setHash();
+  if(scroll){
+    const smooth=!matchMedia("(prefers-reduced-motion: reduce)").matches;
+    $("#result").scrollIntoView({behavior:smooth?"smooth":"auto",block:"start"});
+  }
+}
+function fromHash(){
+  const h=location.hash.slice(1); if(!h) return false;
+  if(EG[h]){st.lane="gold";st.mode="known";st.enemy.gold=h;return true;}
+  const i=h.indexOf("-"); if(i<0) return false;
+  const lane=h.slice(0,i), rest=h.slice(i+1);
+  if(!LANES[lane]) return false;
+  if(rest==="blind"){st.lane=lane;st.mode="blind";return true;}
+  if(LANES[lane].E[rest]){st.lane=lane;st.mode="known";st.enemy[lane]=rest;return true;}
+  return false;
+}
+
+document.querySelector(".switches").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.lane){st.lane=b.dataset.lane;st.pick=0;st.bpick=0;$("#q").value="";$("#q2").value="";}
+  if(b.dataset.mode){st.mode=b.dataset.mode;}
+  draw(false);
+});
+$("#grid").addEventListener("click",e=>{const b=e.target.closest(".chip"); if(b){st.enemy[st.lane]=b.dataset.id;st.pick=0;draw(true);}});
+$("#pool").addEventListener("click",e=>{const b=e.target.closest(".tog"); if(!b) return;
+  const s=st.sel[st.lane], n=b.dataset.n; s.has(n)?s.delete(n):s.add(n); st.bpick=0; drawPool(); drawBlind();});
+$("#selrow").addEventListener("click",e=>{if(e.target.id==="clr"){st.sel[st.lane].clear();st.bpick=0;drawPool();drawBlind();}});
+$("#result").addEventListener("click",e=>{
+  const a=e.target.closest(".alt"); if(!a) return;
+  if(a.dataset.i!=null){st.pick=+a.dataset.i;drawKnown();}
+  if(a.dataset.b!=null){st.bpick=+a.dataset.b;drawBlind();}
+});
+$("#q").addEventListener("input",drawGrid);
+$("#q2").addEventListener("input",drawPool);
+addEventListener("hashchange",()=>{if(fromHash()){st.pick=0;draw(false);}});
+fromHash(); draw(false);
+</script>
+</body>
+</html>
