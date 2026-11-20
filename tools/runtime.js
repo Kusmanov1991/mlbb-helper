@@ -65,7 +65,7 @@ function phaseBox(v,label,time){
 function muBlock(mu,pid,ru){
   if(!mu) return "";
   const row=(k,t)=>t?`<li><b>${k}.</b> ${esc(t)}</li>`:"";
-  return `<div class="mu"><h2 class="sp">Как играть ${esc(H[pid][0])} против ${esc(ru)}</h2><ul class="plain">
+  return `<div class="mu"><h2 class="sp">План на матчап «${esc(H[pid][0])} — ${esc(ru)}»</h2><ul class="plain">
     ${row("Начало",mu.e)}${row("Дальше",mu.l)}${row("Не делай",mu.x)}${row("Сборка",mu.b)}</ul></div>`;
 }
 function drawKnown(){
