@@ -372,7 +372,7 @@ function draw(scroll){
   const m=view();
   $("#laneTitle").textContent=m==="roampick"?"роум под весь драфт":(st.mode==="predict"||st.mode==="draft")?"по всем линиям":LANES[st.lane].title;
   $("#pickKnown").hidden=m!=="known"; $("#pickBlind").hidden=m!=="blind"; $("#pickPred").hidden=m!=="predict"&&m!=="roampick"; $("#sitCard").hidden=m==="draft"||m==="predict"||m==="roampick";
-  $("#laneSeg").hidden=m==="predict";
+  $("#laneSeg").hidden=m==="predict"; document.querySelector('[aria-label="Режим"]').hidden=m==="roampick";
   if(m==="blind"){drawPool();drawBlind();}else if(m==="known"){drawGrid();drawKnown();}else if(m==="predict"){drawTeams();drawPred();}else if(m==="roampick"){drawRTeams();drawRoam();}else{drawDraft();}
   $("#sit").innerHTML=SIT[st.lane].map(([en,t])=>`<div>${ico(en)}<p><b>${esc(IT[en][0])}</b>${esc(t)}</p></div>`).join("");
   setHash();
@@ -397,7 +397,7 @@ function fromHash(){
 
 document.querySelector(".switches").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
-  if(b.dataset.lane){st.lane=b.dataset.lane;st.pick=0;st.bpick=0;$("#q").value="";$("#q2").value="";}
+  if(b.dataset.lane){st.lane=b.dataset.lane;if(st.lane==="roam"&&st.mode!=="blind")st.mode="known";st.pick=0;st.bpick=0;$("#q").value="";$("#q2").value="";}
   if(b.dataset.mode){st.mode=b.dataset.mode;}
   draw(false);
 });
