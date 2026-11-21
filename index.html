@@ -103,7 +103,18 @@ ul.pm .up b{color:var(--good)} ul.pm .dn b{color:var(--bad)}
 footer{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
 footer a{color:var(--gold)}
 
-.mu{margin:10px 0 4px}.chip.inban{opacity:.55}.chip.inban small{color:var(--bad,#b42318)}.eyebrow{margin:0 0 4px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#777)}.mu li b{font-weight:600}
+.mu{margin:10px 0 4px}
+.order{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;font-size:.95rem}
+.order .mini{display:flex;gap:4px}.order .mini button{padding:6px 12px;border-radius:999px;border:1px solid var(--line,#ddd);background:transparent;font:inherit;color:inherit}
+.order .mini button[aria-pressed=true]{background:var(--accent,#a86b00);color:#fff;border-color:transparent}
+.step{position:sticky;top:0;z-index:5;background:var(--card,#fff);border:2px solid var(--accent,#a86b00);border-radius:14px;padding:10px 12px;margin:0 0 10px}
+.step p{margin:0 0 8px;font-size:1.02rem}.stepbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.step .go{padding:8px 14px;border-radius:999px;border:0;background:var(--accent,#a86b00);color:#fff;font:inherit;font-weight:600}
+.strip{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 6px}.strip .sl{font-size:.85rem;min-width:74px;font-weight:600}
+.strip.ban .sl,.strip.them .sl{color:var(--bad,#b42318)}.strip.us .sl{color:var(--good,#1a7f37)}
+.strip .sa{padding:0;border:0;background:none;cursor:pointer}.strip .sa .ava{width:32px;height:32px;font-size:.7rem}
+.top3{font-size:.95rem}.top3 .tp{padding:0;border:0;background:none;font:inherit;font-weight:700;color:var(--accent,#a86b00);text-decoration:underline;cursor:pointer}
+.tthem{color:var(--bad,#b42318)}.tus{color:var(--good,#1a7f37)}.chip.inban{opacity:.55}.chip.inban small{color:var(--bad,#b42318)}.eyebrow{margin:0 0 4px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#777)}.mu li b{font-weight:600}
 .seg.lane button{padding:10px 2px;font-size:14px}
 .chip.banned{opacity:.45}
 .empty .alts{margin-top:8px}
@@ -997,6 +1008,8 @@ const SIT={
 };
 // Мифическая честь (25–49 звёзд), 7 дней: [винрейт, бан-рейт]
 const MH={"masha": [60.09, 37.9], "marcel": [58.05, 39.21], "argus": [56.9, 0.79], "khufra": [55.35, 1.74], "rafaela": [54.99, 13.05], "minotaur": [54.49, 7.93], "lolita": [54.12, 0.19], "floryn": [54.08, 15.03], "valir": [54.0, 4.61], "diggie": [53.93, 3.82], "obsidia": [53.91, 56.64], "bruno": [53.84, 0.25], "carmilla": [53.77, 19.87], "irithel": [53.75, 0.22], "aulus": [53.73, 25.78], "sun": [53.49, 40.33], "edith": [53.25, 0.14], "gloo": [53.18, 52.75], "ling": [53.18, 0.64], "xavier": [53.06, 0.61], "zhask": [52.76, 0.34], "gord": [52.64, 0.4], "aldous": [52.62, 0.56], "minsitthar": [52.47, 4.78], "cyclops": [52.39, 1.74], "estes": [52.21, 52.47], "benedetta": [52.16, 0.48], "melissa": [52.13, 1.13], "lunox": [52.11, 0.92], "yve": [52.11, 0.04], "hanabi": [52.08, 3.87], "natan": [51.81, 0.11], "lukas": [51.65, 30.93], "bane": [51.64, 0.13], "barats": [51.63, 3.69], "belerick": [51.47, 62.98], "cecilion": [51.43, 0.18], "zetian": [51.29, 5.87], "khaleed": [51.25, 0.1], "guinevere": [51.16, 1.92], "hirara": [51.01, 76.45], "kadita": [50.99, 3.34], "saber": [50.97, 27.81], "kagura": [50.95, 1.64], "atlas": [50.92, 11.61], "silvanna": [50.91, 1.87], "natalia": [50.82, 2.45], "terizla": [50.79, 0.17], "badang": [50.76, 3.87], "clint": [50.75, 0.66], "dyrroth": [50.65, 1.69], "fredrinn": [50.5, 1.4], "moskov": [50.48, 0.2], "akai": [50.47, 1.42], "hanzo": [50.46, 6.73], "popol": [50.4, 3.12], "xborg": [50.33, 2.39], "paquito": [50.31, 19.11], "alice": [50.3, 16.13], "kaja": [50.21, 15.97], "miya": [50.2, 3.91], "aamon": [50.19, 2.11], "brody": [50.17, 1.74], "faramis": [50.17, 0.46], "hilda": [50.12, 11.77], "beatrix": [50.07, 0.31], "julian": [50.02, 0.69], "eudora": [49.98, 53.61], "ixia": [49.9, 0.76], "suyou": [49.89, 1.86], "novaria": [49.73, 4.63], "leomord": [49.72, 0.48], "kalea": [49.67, 5.61], "vale": [49.48, 0.14], "uranus": [49.48, 0.31], "angela": [49.48, 12.54], "cici": [49.44, 1.26], "lylia": [49.44, 0.37], "karrie": [49.42, 0.9], "odette": [49.39, 0.18], "sora": [49.37, 5.46], "yuzhong": [49.33, 0.69], "claude": [49.32, 0.22], "yisunshin": [49.31, 2.47], "nolan": [49.28, 19.49], "ruby": [49.24, 0.31], "freya": [49.23, 5.6], "alpha": [49.21, 0.57], "vexana": [49.16, 0.95], "selena": [49.1, 6.96], "yin": [49.06, 1.14], "layla": [49.06, 1.45], "alucard": [48.94, 0.25], "thamuz": [48.86, 1.02], "aurora": [48.81, 0.27], "johnson": [48.76, 1.78], "roger": [48.7, 0.08], "hylos": [48.69, 0.23], "karina": [48.62, 5.72], "hayabusa": [48.62, 1.34], "kimmy": [48.58, 0.79], "gusion": [48.56, 3.59], "joy": [48.55, 0.21], "lapulapu": [48.45, 0.24], "harley": [48.41, 2.39], "zhuxin": [48.28, 0.36], "lesley": [48.19, 9.43], "wanwan": [48.04, 0.14], "phoveus": [48.01, 0.89], "jawhead": [47.78, 0.31], "helcurt": [47.72, 5.18], "change": [47.64, 0.23], "martis": [47.52, 0.42], "esmeralda": [47.33, 2.53], "arlott": [47.3, 0.73], "luoyi": [47.05, 0.08], "pharsa": [46.7, 0.11], "chip": [46.63, 0.19], "grock": [46.44, 0.91], "harith": [46.2, 0.05], "nana": [46.03, 2.57], "zilong": [45.91, 0.34], "balmond": [45.85, 0.26], "chou": [45.35, 3.32], "tigreal": [45.21, 10.0], "mathilda": [44.84, 0.2], "baxia": [44.4, 0.11], "gatotkaca": [44.2, 0.22], "valentina": [43.92, 0.12], "lancelot": [43.33, 0.33], "fanny": [42.53, 1.76], "franco": [41.54, 3.08], "granger": [41.48, 1.2]};
+// популярность (пик + бан, %) для сортировки списка героев
+const POP={"masha": 38.41, "marcel": 39.5, "argus": 1.26, "khufra": 2.03, "rafaela": 13.81, "minotaur": 8.95, "lolita": 0.27, "floryn": 15.88, "valir": 5.81, "diggie": 3.99, "obsidia": 58.77, "bruno": 0.79, "carmilla": 21.19, "irithel": 0.63, "aulus": 26.42, "sun": 42.09, "edith": 0.44, "gloo": 53.45, "ling": 1.27, "xavier": 1.47, "zhask": 0.68, "gord": 0.99, "aldous": 1.08, "minsitthar": 5.38, "cyclops": 2.7, "estes": 53.09, "benedetta": 0.94, "melissa": 1.61, "lunox": 1.34, "yve": 0.08, "hanabi": 6.27, "natan": 0.39, "lukas": 31.66, "bane": 0.44, "barats": 4.36, "belerick": 64.55, "cecilion": 0.82, "zetian": 7.61, "khaleed": 0.24, "guinevere": 2.7, "hirara": 77.05, "kadita": 4.12, "saber": 28.74, "kagura": 2.41, "atlas": 12.66, "silvanna": 2.85, "natalia": 2.79, "terizla": 0.57, "badang": 5.21, "clint": 1.43, "dyrroth": 3.09, "fredrinn": 1.76, "moskov": 1.03, "akai": 1.78, "hanzo": 7.09, "popol": 3.8, "xborg": 3.02, "paquito": 20.27, "alice": 17.04, "kaja": 16.58, "miya": 5.86, "aamon": 2.75, "brody": 2.58, "faramis": 0.55, "hilda": 12.42, "beatrix": 0.94, "julian": 1.35, "eudora": 55.26, "ixia": 1.54, "suyou": 2.92, "novaria": 5.93, "leomord": 0.82, "kalea": 6.28, "vale": 0.63, "uranus": 0.63, "angela": 14.31, "cici": 1.99, "lylia": 0.83, "karrie": 1.5, "odette": 0.69, "sora": 6.13, "yuzhong": 1.37, "claude": 1.02, "yisunshin": 3.35, "nolan": 21.99, "ruby": 0.63, "freya": 6.53, "alpha": 1.92, "vexana": 2.61, "selena": 8.4, "yin": 1.59, "layla": 3.26, "alucard": 0.75, "thamuz": 1.68, "aurora": 0.84, "johnson": 2.53, "roger": 0.39, "hylos": 0.55, "karina": 6.7, "hayabusa": 2.11, "kimmy": 1.67, "gusion": 4.95, "joy": 0.34, "lapulapu": 0.59, "harley": 3.23, "zhuxin": 0.57, "lesley": 11.46, "wanwan": 0.3, "phoveus": 1.18, "jawhead": 0.66, "helcurt": 5.79, "change": 0.85, "martis": 1.04, "esmeralda": 3.44, "arlott": 1.23, "luoyi": 0.28, "pharsa": 0.4, "chip": 0.23, "grock": 1.28, "harith": 0.18, "nana": 4.15, "zilong": 0.94, "balmond": 0.82, "chou": 4.32, "tigreal": 12.31, "mathilda": 0.32, "baxia": 0.16, "gatotkaca": 0.74, "valentina": 0.23, "lancelot": 0.84, "fanny": 2.4, "franco": 3.98, "granger": 2.46};
 const LANES={
  gold:{title:"линии золота",order:ORDER_G,E:EG,def:"brody"},
  mid:{title:"мида",order:ORDER_M,E:EM,def:"valir"},
@@ -1322,13 +1335,39 @@ function rteamRow(side,label,max){
   const free=T.length<max?`<button class="slot" type="button" data-rside="${side}" aria-label="Добавить: ${label}">+</button>`:"";
   return `<div class="team ${side==="ban"?"them":side}${on?" on":""}"><button class="tlabel" type="button" data-rside="${side}" aria-pressed="${on}">${label} <small>${T.length}/${max}</small></button><div class="slots">${full}${free}</div></div>`;
 }
-const RS_NAME={us:"союзников",them:"врагов",ban:"баны"};
+st.first=true; st.banDone=false; st.meDone=false; st.manual=null; st.rhist=[];
+function autoSide(){
+  if(st.manual) return st.manual;
+  if(!st.banDone&&st.ban.size<10) return "ban";
+  const T=st.teams, idx=T.us.length+T.them.length+(st.meDone?1:0);
+  if(idx>=10) return null;
+  let ours=(SEQ[idx][0]==="A")===st.first;
+  if(!ours&&T.them.length>=5) ours=true;
+  if(ours&&T.us.length>=4&&!st.meDone) return "me";
+  if(ours&&T.us.length>=4) return T.them.length<5?"them":null;
+  return ours?"us":"them";
+}
+const POPSORT=Object.keys(MH).sort((a,b)=>(POP[b]||0)-(POP[a]||0));
 function drawRTeams(){
-  $("#teams").innerHTML=rteamRow("ban","Баны",10)+rteamRow("us","Союзники",4)+rteamRow("them","Враги",5)+
-    `<div class="selrow"><span>Сейчас добавляем: <b>${RS_NAME[st.rside]}</b></span>${st.teams.us.length+st.teams.them.length+st.ban.size?`<button class="link" type="button" data-rclear="1">Очистить</button>`:""}</div>`;
+  const side=autoSide(), T=st.teams, n=T.us.length+T.them.length+(st.meDone?1:0)+1;
+  st.rside=side==="me"?"us":(side||"them");
+  const btn=(attr,txt,cls="link")=>`<button class="${cls}" type="button" ${attr}>${txt}</button>`;
+  const step = side==="ban" ? [`Баны: нажимай забаненных героев (${st.ban.size}/10)`, btn('data-rbandone="1"',"Баны всё →","go")]
+    : side==="them" ? [`Пик ${n} из 10 — <b class="tthem">ход врага</b>: нажми, кого он взял`, ""]
+    : side==="us" ? [`Пик ${n} из 10 — <b class="tus">ход вашей команды</b>: нажми союзника`, st.meDone?"":btn('data-rme="1"',"Это мой пик →","go")]
+    : side==="me" ? [`Пик ${n} из 10 — <b class="tus">твой ход!</b> Смотри рекомендацию ниже`, btn('data-rme="1"',"Я взял →","go")]
+    : ["Драфт заполнен", ""];
+  const top=side?roamRank().slice(0,3).map((x,i)=>`<button type="button" class="tp" data-rtop="${i}">${esc(H[x.id][0])}</button>`).join(", "):"";
+  const any=st.rhist.length||T.us.length||T.them.length||st.ban.size;
+  $("#teams").innerHTML=
+    `<div class="order"><span>Наша команда пикает</span><div class="mini">`+
+      `<button type="button" data-rfirst="1" aria-pressed="${st.first}">первой</button><button type="button" data-rfirst="0" aria-pressed="${!st.first}">второй</button></div></div>`+
+    `<div class="step"><p>${step[0]}</p>${top?`<p class="top3">Лучшие роумеры сейчас: ${top}</p>`:""}<div class="stepbtns">${step[1]}${any?btn('data-rundo="1"',"Отменить")+btn('data-rclear="1"',"Сначала"):""}</div></div>`+
+    [["ban","Баны"],["us","Союзники"],["them","Враги"]].map(([k,l])=>{const L=k==="ban"?[...st.ban]:T[k]; return L.length?
+      `<div class="strip ${k}"><span class="sl">${l}</span>${L.map(id=>`<button type="button" class="sa" data-rrm="${k}:${id}" title="Убрать ${esc(H[id][0])}">${ava(id)}</button>`).join("")}</div>`:"";}).join("");
   const q=$("#q3").value.trim().toLowerCase();
-  const ids=ALL_IDS.filter(id=>!q||matches(id,q));
-  $("#grid3").innerHTML=ids.length?ids.map(id=>{const u=st.teams.us.includes(id),t=st.teams.them.includes(id),b=st.ban.has(id);
+  const ids=(q?ALL_IDS:POPSORT).filter(id=>q?matches(id,q):!(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)));
+  $("#grid3").innerHTML=ids.length?ids.map(id=>{const u=T.us.includes(id),t=T.them.includes(id),b=st.ban.has(id);
     return `<button class="chip${u?" inus":t?" inthem":b?" inban":""}" type="button" data-rpid="${id}" aria-pressed="${u||t||b}">${ava(id)}<span>${esc(H[id][0])}<small>${u?"союзник":t?"враг":b?"в бане":esc(H[id][1])}</small></span></button>`;}).join("")
     :`<span class="empty">Такого героя нет. Попробуй другое написание.</span>`;
 }
@@ -1358,14 +1397,25 @@ function drawRoam(){
 }
 $("#pickPred").addEventListener("click",e=>{
   if(view()!=="roampick") return;
-  const b=e.target.closest("button"); if(!b) return; const d=b.dataset;
-  if(d.rside){st.rside=d.rside;drawRTeams();return;}
-  if(d.rclear){st.teams.us=[];st.teams.them=[];st.ban.clear();st.rside="them";st.bpick=0;drawRTeams();drawRoam();return;}
-  if(d.rrm){const [side,id]=d.rrm.split(":");if(side==="ban")st.ban.delete(id);else st.teams[side]=st.teams[side].filter(x=>x!==id);st.rside=side;st.bpick=0;drawRTeams();drawRoam();return;}
-  if(d.rpid){const id=d.rpid,T=st.teams;
-    if(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)){T.us=T.us.filter(x=>x!==id);T.them=T.them.filter(x=>x!==id);st.ban.delete(id);}
-    else{const s=st.rside; if(s==="ban"){if(st.ban.size<10)st.ban.add(id);} else {const max=s==="us"?4:5; if(T[s].length>=max)return; T[s].push(id);}}
-    st.bpick=0;$("#q3").value="";drawRTeams();drawRoam();}
+  const b=e.target.closest("button"); if(!b) return; const d=b.dataset, T=st.teams;
+  const redraw=()=>{st.bpick=0;drawRTeams();drawRoam();};
+  if(d.rtop!=null){st.bpick=+d.rtop;drawRoam();$("#result").scrollIntoView({behavior:"smooth",block:"start"});return;}
+  if(d.rfirst!=null){st.first=d.rfirst==="1";drawRTeams();return;}
+  if(d.rside){st.manual=d.rside;drawRTeams();return;}
+  if(d.rbandone){st.banDone=true;st.rhist.push({t:"bandone"});redraw();return;}
+  if(d.rme){st.meDone=true;st.rhist.push({t:"me"});redraw();return;}
+  if(d.rundo){const h=st.rhist.pop(); if(!h) return;
+    if(h.t==="bandone")st.banDone=false; else if(h.t==="me")st.meDone=false; else if(h.t==="ban")st.ban.delete(h.id); else T[h.t]=T[h.t].filter(x=>x!==h.id);
+    redraw();return;}
+  if(d.rclear){T.us=[];T.them=[];st.ban.clear();st.banDone=false;st.meDone=false;st.manual=null;st.rhist=[];redraw();return;}
+  const drop=id=>{T.us=T.us.filter(x=>x!==id);T.them=T.them.filter(x=>x!==id);st.ban.delete(id);st.rhist=st.rhist.filter(h=>h.id!==id);};
+  if(d.rrm){drop(d.rrm.split(":")[1]);redraw();return;}
+  if(d.rpid){const id=d.rpid;
+    if(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)) drop(id);
+    else{let s=autoSide(); if(s==="me") s="us"; if(!s) return;
+      if(s==="ban"){if(st.ban.size>=10)return; st.ban.add(id);} else {if(T[s].length>=(s==="us"?4:5))return; T[s].push(id);}
+      st.rhist.push({t:s,id}); st.manual=null;}
+    $("#q3").value="";redraw();}
 });
 $("#q3").addEventListener("input",()=>{if(view()==="roampick")drawRTeams();});
 

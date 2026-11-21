@@ -61,7 +61,18 @@ rep('<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/co
     '<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a>, <a href="https://mlbbhub.com/draft">mlbbhub.com/draft</a></div>')
 
 css = '''
-.mu{margin:10px 0 4px}.chip.inban{opacity:.55}.chip.inban small{color:var(--bad,#b42318)}.eyebrow{margin:0 0 4px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#777)}.mu li b{font-weight:600}
+.mu{margin:10px 0 4px}
+.order{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;font-size:.95rem}
+.order .mini{display:flex;gap:4px}.order .mini button{padding:6px 12px;border-radius:999px;border:1px solid var(--line,#ddd);background:transparent;font:inherit;color:inherit}
+.order .mini button[aria-pressed=true]{background:var(--accent,#a86b00);color:#fff;border-color:transparent}
+.step{position:sticky;top:0;z-index:5;background:var(--card,#fff);border:2px solid var(--accent,#a86b00);border-radius:14px;padding:10px 12px;margin:0 0 10px}
+.step p{margin:0 0 8px;font-size:1.02rem}.stepbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.step .go{padding:8px 14px;border-radius:999px;border:0;background:var(--accent,#a86b00);color:#fff;font:inherit;font-weight:600}
+.strip{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 6px}.strip .sl{font-size:.85rem;min-width:74px;font-weight:600}
+.strip.ban .sl,.strip.them .sl{color:var(--bad,#b42318)}.strip.us .sl{color:var(--good,#1a7f37)}
+.strip .sa{padding:0;border:0;background:none;cursor:pointer}.strip .sa .ava{width:32px;height:32px;font-size:.7rem}
+.top3{font-size:.95rem}.top3 .tp{padding:0;border:0;background:none;font:inherit;font-weight:700;color:var(--accent,#a86b00);text-decoration:underline;cursor:pointer}
+.tthem{color:var(--bad,#b42318)}.tus{color:var(--good,#1a7f37)}.chip.inban{opacity:.55}.chip.inban small{color:var(--bad,#b42318)}.eyebrow{margin:0 0 4px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#777)}.mu li b{font-weight:600}
 .seg.lane button{padding:10px 2px;font-size:14px}
 .chip.banned{opacity:.45}
 .empty .alts{margin-top:8px}

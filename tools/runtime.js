@@ -314,13 +314,39 @@ function rteamRow(side,label,max){
   const free=T.length<max?`<button class="slot" type="button" data-rside="${side}" aria-label="Добавить: ${label}">+</button>`:"";
   return `<div class="team ${side==="ban"?"them":side}${on?" on":""}"><button class="tlabel" type="button" data-rside="${side}" aria-pressed="${on}">${label} <small>${T.length}/${max}</small></button><div class="slots">${full}${free}</div></div>`;
 }
-const RS_NAME={us:"союзников",them:"врагов",ban:"баны"};
+st.first=true; st.banDone=false; st.meDone=false; st.manual=null; st.rhist=[];
+function autoSide(){
+  if(st.manual) return st.manual;
+  if(!st.banDone&&st.ban.size<10) return "ban";
+  const T=st.teams, idx=T.us.length+T.them.length+(st.meDone?1:0);
+  if(idx>=10) return null;
+  let ours=(SEQ[idx][0]==="A")===st.first;
+  if(!ours&&T.them.length>=5) ours=true;
+  if(ours&&T.us.length>=4&&!st.meDone) return "me";
+  if(ours&&T.us.length>=4) return T.them.length<5?"them":null;
+  return ours?"us":"them";
+}
+const POPSORT=Object.keys(MH).sort((a,b)=>(POP[b]||0)-(POP[a]||0));
 function drawRTeams(){
-  $("#teams").innerHTML=rteamRow("ban","Баны",10)+rteamRow("us","Союзники",4)+rteamRow("them","Враги",5)+
-    `<div class="selrow"><span>Сейчас добавляем: <b>${RS_NAME[st.rside]}</b></span>${st.teams.us.length+st.teams.them.length+st.ban.size?`<button class="link" type="button" data-rclear="1">Очистить</button>`:""}</div>`;
+  const side=autoSide(), T=st.teams, n=T.us.length+T.them.length+(st.meDone?1:0)+1;
+  st.rside=side==="me"?"us":(side||"them");
+  const btn=(attr,txt,cls="link")=>`<button class="${cls}" type="button" ${attr}>${txt}</button>`;
+  const step = side==="ban" ? [`Баны: нажимай забаненных героев (${st.ban.size}/10)`, btn('data-rbandone="1"',"Баны всё →","go")]
+    : side==="them" ? [`Пик ${n} из 10 — <b class="tthem">ход врага</b>: нажми, кого он взял`, ""]
+    : side==="us" ? [`Пик ${n} из 10 — <b class="tus">ход вашей команды</b>: нажми союзника`, st.meDone?"":btn('data-rme="1"',"Это мой пик →","go")]
+    : side==="me" ? [`Пик ${n} из 10 — <b class="tus">твой ход!</b> Смотри рекомендацию ниже`, btn('data-rme="1"',"Я взял →","go")]
+    : ["Драфт заполнен", ""];
+  const top=side?roamRank().slice(0,3).map((x,i)=>`<button type="button" class="tp" data-rtop="${i}">${esc(H[x.id][0])}</button>`).join(", "):"";
+  const any=st.rhist.length||T.us.length||T.them.length||st.ban.size;
+  $("#teams").innerHTML=
+    `<div class="order"><span>Наша команда пикает</span><div class="mini">`+
+      `<button type="button" data-rfirst="1" aria-pressed="${st.first}">первой</button><button type="button" data-rfirst="0" aria-pressed="${!st.first}">второй</button></div></div>`+
+    `<div class="step"><p>${step[0]}</p>${top?`<p class="top3">Лучшие роумеры сейчас: ${top}</p>`:""}<div class="stepbtns">${step[1]}${any?btn('data-rundo="1"',"Отменить")+btn('data-rclear="1"',"Сначала"):""}</div></div>`+
+    [["ban","Баны"],["us","Союзники"],["them","Враги"]].map(([k,l])=>{const L=k==="ban"?[...st.ban]:T[k]; return L.length?
+      `<div class="strip ${k}"><span class="sl">${l}</span>${L.map(id=>`<button type="button" class="sa" data-rrm="${k}:${id}" title="Убрать ${esc(H[id][0])}">${ava(id)}</button>`).join("")}</div>`:"";}).join("");
   const q=$("#q3").value.trim().toLowerCase();
-  const ids=ALL_IDS.filter(id=>!q||matches(id,q));
-  $("#grid3").innerHTML=ids.length?ids.map(id=>{const u=st.teams.us.includes(id),t=st.teams.them.includes(id),b=st.ban.has(id);
+  const ids=(q?ALL_IDS:POPSORT).filter(id=>q?matches(id,q):!(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)));
+  $("#grid3").innerHTML=ids.length?ids.map(id=>{const u=T.us.includes(id),t=T.them.includes(id),b=st.ban.has(id);
     return `<button class="chip${u?" inus":t?" inthem":b?" inban":""}" type="button" data-rpid="${id}" aria-pressed="${u||t||b}">${ava(id)}<span>${esc(H[id][0])}<small>${u?"союзник":t?"враг":b?"в бане":esc(H[id][1])}</small></span></button>`;}).join("")
     :`<span class="empty">Такого героя нет. Попробуй другое написание.</span>`;
 }
@@ -350,14 +376,25 @@ function drawRoam(){
 }
 $("#pickPred").addEventListener("click",e=>{
   if(view()!=="roampick") return;
-  const b=e.target.closest("button"); if(!b) return; const d=b.dataset;
-  if(d.rside){st.rside=d.rside;drawRTeams();return;}
-  if(d.rclear){st.teams.us=[];st.teams.them=[];st.ban.clear();st.rside="them";st.bpick=0;drawRTeams();drawRoam();return;}
-  if(d.rrm){const [side,id]=d.rrm.split(":");if(side==="ban")st.ban.delete(id);else st.teams[side]=st.teams[side].filter(x=>x!==id);st.rside=side;st.bpick=0;drawRTeams();drawRoam();return;}
-  if(d.rpid){const id=d.rpid,T=st.teams;
-    if(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)){T.us=T.us.filter(x=>x!==id);T.them=T.them.filter(x=>x!==id);st.ban.delete(id);}
-    else{const s=st.rside; if(s==="ban"){if(st.ban.size<10)st.ban.add(id);} else {const max=s==="us"?4:5; if(T[s].length>=max)return; T[s].push(id);}}
-    st.bpick=0;$("#q3").value="";drawRTeams();drawRoam();}
+  const b=e.target.closest("button"); if(!b) return; const d=b.dataset, T=st.teams;
+  const redraw=()=>{st.bpick=0;drawRTeams();drawRoam();};
+  if(d.rtop!=null){st.bpick=+d.rtop;drawRoam();$("#result").scrollIntoView({behavior:"smooth",block:"start"});return;}
+  if(d.rfirst!=null){st.first=d.rfirst==="1";drawRTeams();return;}
+  if(d.rside){st.manual=d.rside;drawRTeams();return;}
+  if(d.rbandone){st.banDone=true;st.rhist.push({t:"bandone"});redraw();return;}
+  if(d.rme){st.meDone=true;st.rhist.push({t:"me"});redraw();return;}
+  if(d.rundo){const h=st.rhist.pop(); if(!h) return;
+    if(h.t==="bandone")st.banDone=false; else if(h.t==="me")st.meDone=false; else if(h.t==="ban")st.ban.delete(h.id); else T[h.t]=T[h.t].filter(x=>x!==h.id);
+    redraw();return;}
+  if(d.rclear){T.us=[];T.them=[];st.ban.clear();st.banDone=false;st.meDone=false;st.manual=null;st.rhist=[];redraw();return;}
+  const drop=id=>{T.us=T.us.filter(x=>x!==id);T.them=T.them.filter(x=>x!==id);st.ban.delete(id);st.rhist=st.rhist.filter(h=>h.id!==id);};
+  if(d.rrm){drop(d.rrm.split(":")[1]);redraw();return;}
+  if(d.rpid){const id=d.rpid;
+    if(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)) drop(id);
+    else{let s=autoSide(); if(s==="me") s="us"; if(!s) return;
+      if(s==="ban"){if(st.ban.size>=10)return; st.ban.add(id);} else {if(T[s].length>=(s==="us"?4:5))return; T[s].push(id);}
+      st.rhist.push({t:s,id}); st.manual=null;}
+    $("#q3").value="";redraw();}
 });
 $("#q3").addEventListener("input",()=>{if(view()==="roampick")drawRTeams();});
 

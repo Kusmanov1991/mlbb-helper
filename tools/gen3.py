@@ -201,7 +201,7 @@ out['B_GEN'] += ",\n zhask:" + b_gen(MAGE, "Flicker", None, None, "Ставь т
 out['EG_ADD'] = entry("harith", LANE_IDS['gold'])
 out['EM_ADD'] = entry("selena", LANE_IDS['mid']) + ",\n" + entry("change", LANE_IDS['mid'])
 out['BLM_ADD'] = bl("selena") + ",\n" + bl("change")
-out['MH'] = "const MH=%s;" % J({k: [v[0], v[2]] for k, v in MH.items()})
+out['MH'] = "const MH=%s;\n// популярность (пик + бан, %%) для сортировки списка героев\nconst POP=%s;" % (J({k: [v[0], v[2]] for k, v in MH.items()}), J({k: round(v[1]+v[2], 2) for k, v in MH.items()}))
 out['RU_ALL'] = {k: RU_OF_ID[k] for k in MH}
 json.dump(out, open('gen3_out.json', 'w', encoding='utf8'), ensure_ascii=False)
 print({l: len(ORD[l]) for l in ORD}, len(gen_ids), "new H:", [k for k in gen_ids if k not in existing])
