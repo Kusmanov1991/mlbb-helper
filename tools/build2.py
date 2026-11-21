@@ -36,7 +36,8 @@ rep('''      <button type="button" data-mode="known">Знаю, кто на ли�
       <button type="button" data-mode="blind">Пикаю вслепую</button>''',
     '''      <button type="button" data-mode="known">Знаю врага</button>
       <button type="button" data-mode="blind">Вслепую</button>
-      <button type="button" data-mode="draft">Баны</button>''')
+      <button type="button" data-mode="draft">Баны</button>
+      <button type="button" data-mode="roampick">Пик роума</button>''')
 rep('<div class="seg lane" role="group" aria-label="Линия">', '<div class="seg lane" id="laneSeg" role="group" aria-label="Линия">')
 rep('''  <section class="card" id="result" aria-live="polite"></section>''',
     '''  <section class="picker" id="pickPred" aria-label="Составы команд" hidden>
@@ -61,7 +62,7 @@ rep('<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/co
     '<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a>, <a href="https://mlbbhub.com/draft">mlbbhub.com/draft</a></div>')
 
 css = '''
-.mu{margin:10px 0 4px}.mu li b{font-weight:600}
+.mu{margin:10px 0 4px}.chip.inban{opacity:.55}.chip.inban small{color:var(--bad,#b42318)}.eyebrow{margin:0 0 4px;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#777)}.mu li b{font-weight:600}
 .seg.lane button{padding:10px 2px;font-size:14px}
 .chip.banned{opacity:.45}
 .empty .alts{margin-top:8px}
