@@ -1300,32 +1300,47 @@ const PICKER=S("franco kaja marcel atlas khufra tigreal");
 const ANTIDASH=S("khufra kaja");
 const PROTECT=S("angela diggie khufra kaja rafaela");
 st.rside="them";
-const ROAM_IDS=BL.roam.map(c=>c.id);
+const DRAFT_LANES=new Set(["roam","mid"]);
+const ESC=S("kagura harith valir lylia harley kadita zetian luoyi");
+const CCMID=S("vale aurora eudora nana valir vexana kadita zhuxin");
+const LONG=S("xavier gord yve pharsa novaria");
+const TANKKILL=S("lunox cecilion yve gord valentina");
+const LANE_OPP={mid:new Set([...BL.mid.map(c=>c.id),...Object.keys(LANES.mid.E)])};
 function roamRank(){
+  const lane=st.lane, opp=LANE_OPP[lane];
   const us=st.teams.us, them=st.teams.them, taken=new Set([...us,...them,...st.ban]);
   const left=5-them.length;                       // сколько врагов ещё не выбрано
   const cnt=(set,T)=>T.filter(x=>set.has(x)).length;
   const need=[];
-  if(us.length>=2&&!cnt(TANK,us)) need.push(["tank",1.5,"У вас нет танка: закрывает переднюю линию"]);
-  if(us.length>=2&&!cnt(HEAL,us)) need.push(["heal",0.8,"У вас нет лечения"]);
+  if(lane==="roam"&&us.length>=2&&!cnt(TANK,us)) need.push(["tank",1.5,"У вас нет танка: закрывает переднюю линию"]);
+  if(lane==="roam"&&us.length>=2&&!cnt(HEAL,us)) need.push(["heal",0.8,"У вас нет лечения"]);
   const dash=cnt(DASH,them), assn=cnt(ASSN,them), mm=cnt(MMR,them), cc=cnt(CCH,them), still=cnt(STILL,them);
-  return ROAM_IDS.filter(id=>!taken.has(id)).map(id=>{
+  const tanks=cnt(TANK,them), usCC=cnt(CCH,us);
+  return BL[lane].map(c=>c.id).filter(id=>!taken.has(id)).map(id=>{
     let sc=wrOf(id)-50; const up=[], dn=[];
     if(sc>0.5) up.push([sc,"Сильный в патче: винрейт "+num(wrOf(id))+"% на Мифической чести"]);
     else if(sc<-0.5) dn.push([sc,"Слабый в патче: винрейт "+num(wrOf(id))+"%"]);
-    for(const e of them){const n=edgeOf(id,e)-edgeOf(e,id);
-      if(Math.abs(n)>=0.5){sc+=n;(n>0?up:dn).push([n,(n>0?"Выигрывает против ":"Проигрывает ")+(n>0?"":"против ")+H[e][0]]);}}
+    for(const e of them){const lo=opp&&opp.has(e), n=(edgeOf(id,e)-edgeOf(e,id))*(lo?1.5:1);
+      if(Math.abs(n)>=0.5){sc+=n;(n>0?up:dn).push([n,(n>0?"Выигрывает против ":"Проигрывает против ")+H[e][0]+(lo?" (соперник по линии)":"")]);}}
     if(left>0){ // кто из ещё доступных героев контрит его
       let best=null; for(const x in MX){ if(taken.has(x)) continue; const e=edgeOf(x,id); if(e>0&&(!best||e>best[1])) best=[x,e]; }
       if(best){const r=best[1]*left/5; sc-=r; dn.push([-r,"Риск контрпика: враг ещё может взять "+H[best[0]][0]]);}
     }
     for(const [k,v,t] of need) if((k==="tank"&&TANK.has(id))||(k==="heal"&&HEAL.has(id))){sc+=v;up.push([v,t]);}
     const tag=(c,set,min,v,t)=>{if(c>=min&&set.has(id)){sc+=v;up.push([v,t]);}};
+    if(lane==="mid"){
+    tag(assn,ESC,1,1.0,"У врага убийца: есть чем уйти от его захода");
+    tag(dash,CCMID,2,1.0,"У врага "+dash+" героя с рывками: контроль ловит их");
+    tag(still,LONG,2,0.8,"У врага "+still+" малоподвижных героя: бьёт их с дальней дистанции");
+    tag(tanks,TANKKILL,2,0.8,"У врага "+tanks+" танка: долгий урон пробивает их");
+    if(us.length>=2&&usCC===0&&CCMID.has(id)){sc+=1.0;up.push([1.0,"У вас мало контроля: добавит его команде"]);}
+    } else {
     tag(dash,ANTIDASH,2,1.5,"У врага "+dash+" героя с рывками: ломает их");
     tag(assn,PROTECT,1,1.0,"У врага убийца: защищает вашего стрелка и мага");
     tag(mm,S("lolita"),2,1.0,"У врага "+mm+" стрелка: щит блокирует их выстрелы");
     tag(cc,S("diggie"),3,1.5,"У врага много контроля: ульт снимает его со всей команды");
     tag(still,PICKER,2,1.0,"У врага "+still+" малоподвижных героя: ловит их");
+    }
     return {id,sc,up:up.sort((a,b)=>b[0]-a[0]),dn:dn.sort((a,b)=>a[0]-b[0])};
   }).sort((a,b)=>b.sc-a.sc);
 }
@@ -1362,7 +1377,7 @@ function drawRTeams(){
   $("#teams").innerHTML=
     `<div class="order"><span>Наша команда пикает</span><div class="mini">`+
       `<button type="button" data-rfirst="1" aria-pressed="${st.first}">первой</button><button type="button" data-rfirst="0" aria-pressed="${!st.first}">второй</button></div></div>`+
-    `<div class="step"><p>${step[0]}</p>${top?`<p class="top3">Лучшие роумеры сейчас: ${top}</p>`:""}<div class="stepbtns">${step[1]}${any?btn('data-rundo="1"',"Отменить")+btn('data-rclear="1"',"Сначала"):""}</div></div>`+
+    `<div class="step"><p>${step[0]}</p>${top?`<p class="top3">Лучшие ${st.lane==="mid"?"маги на мид":"роумеры"} сейчас: ${top}</p>`:""}<div class="stepbtns">${step[1]}${any?btn('data-rundo="1"',"Отменить")+btn('data-rclear="1"',"Сначала"):""}</div></div>`+
     [["ban","Баны"],["us","Союзники"],["them","Враги"]].map(([k,l])=>{const L=k==="ban"?[...st.ban]:T[k]; return L.length?
       `<div class="strip ${k}"><span class="sl">${l}</span>${L.map(id=>`<button type="button" class="sa" data-rrm="${k}:${id}" title="Убрать ${esc(H[id][0])}">${ava(id)}</button>`).join("")}</div>`:"";}).join("");
   const q=$("#q3").value.trim().toLowerCase();
@@ -1373,7 +1388,7 @@ function drawRTeams(){
 }
 function drawRoam(){
   const r=roamRank(), n=st.teams.them.length;
-  if(!r.length){$("#result").innerHTML=`<p class="why">Все роумеры в бане или уже выбраны.</p>`;return;}
+  if(!r.length){$("#result").innerHTML=`<p class="why">Все кандидаты в бане или уже выбраны.</p>`;return;}
   if(st.bpick>=Math.min(r.length,6)) st.bpick=0;
   const stage=n===0?["Первый пик","Врагов ещё не видно. Берём сильного героя, которого трудно законтрить."]
     :n>=4?["Последний пик","Видно почти весь вражеский состав. Подбираем роума против него."]
@@ -1382,18 +1397,18 @@ function drawRoam(){
   const line=([v,t])=>`<li class="${v>=0?"up":"dn"}"><b>${sgn(v)}</b><span>${esc(t)}</span></li>`;
   const heals=st.teams.them.filter(x=>HEALE.has(x)).length;
   const alts=r.slice(0,6).map((x,i)=>`<button class="alt" type="button" data-r="${i}" aria-pressed="${i===st.bpick}">${ava(x.id)}${esc(H[x.id][0])}<span class="e">${sgn(x.sc)}</span></button>`).join("");
-  const keep=st.lane; st.lane="roam"; const build=buildBlock(id); st.lane=keep;
+  const build=buildBlock(id);
   $("#result").innerHTML=`
     <p class="eyebrow">${esc(stage[0])}</p>
     <div class="verdict">${ava(id,true)}<span class="name">Бери: ${esc(H[id][0])}</span></div>
     <p class="why">${esc(stage[1])}</p>
     <div><h2 class="sp">Почему он</h2><ul class="pm">${c.up.slice(0,5).map(line).join("")||`<li><b>·</b><span>Без явных плюсов: просто лучший из доступных.</span></li>`}</ul></div>
     ${c.dn.length?`<div><h2 class="sp">Что против него</h2><ul class="pm">${c.dn.slice(0,3).map(line).join("")}</ul></div>`:""}
-    ${st.teams.them.map(e=>muBlock(MU["roam:"+e+":"+id],id,H[e][0])).join("")}
+    ${st.teams.them.map(e=>muBlock(MU[st.lane+":"+e+":"+id],id,H[e][0])).join("")}
     ${heals>=2?`<p class="note">У врага ${heals} героя с сильным лечением: возьми «Господство льда».</p>`:""}
-    <div><h2 class="sp">Рейтинг роумеров</h2><div class="alts">${alts}</div></div>
+    <div><h2 class="sp">Рейтинг ${st.lane==="mid"?"магов":"роумеров"}</h2><div class="alts">${alts}</div></div>
     ${build}
-    <p class="note">Оценка = винрейт в патче − 50 + матчапы против отмеченных врагов (п.п.) − риск контрпика + бонусы за нужды команды. Забанен или забран — просто пропадает из списка.</p>`;
+    <p class="note">Оценка = винрейт в патче − 50 + матчапы против отмеченных врагов (п.п., соперник по миду ×1,5) − риск контрпика + бонусы за нужды команды. Забанен или забран — просто пропадает из списка.</p>`;
 }
 $("#pickPred").addEventListener("click",e=>{
   if(view()!=="roampick") return;
@@ -1420,15 +1435,15 @@ $("#pickPred").addEventListener("click",e=>{
 $("#q3").addEventListener("input",()=>{if(view()==="roampick")drawRTeams();});
 
 function setHash(){
-  const h=st.mode==="draft"?"draft":st.mode==="predict"?"predict":view()==="roampick"?"roam-pick":st.lane+"-"+(st.mode==="blind"?"blind":st.enemy[st.lane]);
+  const h=st.mode==="draft"?"draft":st.mode==="predict"?"predict":view()==="roampick"?st.lane+"-pick":st.lane+"-"+(st.mode==="blind"?"blind":st.enemy[st.lane]);
   try{ if(location.hash!=="#"+h) history.replaceState(null,"","#"+h); }catch(e){ try{location.hash=h;}catch(_){} }
 }
-const view=()=>(st.lane==="roam"&&(st.mode==="known"||st.mode==="blind"))?"roampick":st.mode;
+const view=()=>(DRAFT_LANES.has(st.lane)&&(st.mode==="known"||st.mode==="blind"))?"roampick":st.mode;
 function draw(scroll){
   document.querySelectorAll("[data-lane]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lane===st.lane));
   document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===st.mode));
   const m=view();
-  $("#laneTitle").textContent=m==="roampick"?"роум под весь драфт":(st.mode==="predict"||st.mode==="draft")?"по всем линиям":LANES[st.lane].title;
+  $("#laneTitle").textContent=m==="roampick"?(st.lane==="mid"?"мид под весь драфт":"роум под весь драфт"):(st.mode==="predict"||st.mode==="draft")?"по всем линиям":LANES[st.lane].title;
   $("#pickKnown").hidden=m!=="known"; $("#pickBlind").hidden=m!=="blind"; $("#pickPred").hidden=m!=="predict"&&m!=="roampick"; $("#sitCard").hidden=m==="draft"||m==="predict"||m==="roampick";
   $("#laneSeg").hidden=m==="predict"; document.querySelector('[aria-label="Режим"]').hidden=m==="roampick";
   if(m==="blind"){drawPool();drawBlind();}else if(m==="known"){drawGrid();drawKnown();}else if(m==="predict"){drawTeams();drawPred();}else if(m==="roampick"){drawRTeams();drawRoam();}else{drawDraft();}
@@ -1443,6 +1458,7 @@ function fromHash(){
   const h=location.hash.slice(1); if(!h) return false;
   if(h==="draft"){st.mode="draft";return true;}
   if(h==="predict"){st.mode="predict";return true;}
+  if(h==="mid-pick"||h==="mid-blind"){st.lane="mid";if(st.mode!=="blind")st.mode="known";return true;}
   if(h==="roampick"||h==="roam-pick"||h==="roam-blind"){st.lane="roam";if(st.mode!=="blind")st.mode="known";return true;}
   if(EG[h]){st.lane="gold";st.mode="known";st.enemy.gold=h;return true;}
   const i=h.indexOf("-"); if(i<0) return false;
@@ -1455,7 +1471,7 @@ function fromHash(){
 
 document.querySelector(".switches").addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
-  if(b.dataset.lane){st.lane=b.dataset.lane;if(st.lane==="roam"&&st.mode!=="blind")st.mode="known";st.pick=0;st.bpick=0;$("#q").value="";$("#q2").value="";}
+  if(b.dataset.lane){st.lane=b.dataset.lane;if(DRAFT_LANES.has(st.lane)&&st.mode!=="blind")st.mode="known";st.pick=0;st.bpick=0;$("#q").value="";$("#q2").value="";}
   if(b.dataset.mode){st.mode=b.dataset.mode;}
   draw(false);
 });
