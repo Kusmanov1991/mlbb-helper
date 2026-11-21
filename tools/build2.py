@@ -36,8 +36,7 @@ rep('''      <button type="button" data-mode="known">Знаю, кто на ли�
       <button type="button" data-mode="blind">Пикаю вслепую</button>''',
     '''      <button type="button" data-mode="known">Знаю врага</button>
       <button type="button" data-mode="blind">Вслепую</button>
-      <button type="button" data-mode="draft">Баны</button>
-      <button type="button" data-mode="roampick">Пик роума</button>''')
+      <button type="button" data-mode="draft">Баны</button>''')
 rep('<div class="seg lane" role="group" aria-label="Линия">', '<div class="seg lane" id="laneSeg" role="group" aria-label="Линия">')
 rep('''  <section class="card" id="result" aria-live="polite"></section>''',
     '''  <section class="picker" id="pickPred" aria-label="Составы команд" hidden>
