@@ -64,31 +64,28 @@ for(const l in BL)BL[l].forEach(c=>{c.c.forEach(([n,e])=>addM(RU2ID[n],c.id,e));
 const edgeOf=(a,b)=>(MX[a]&&MX[a][b])||0;
 const net=(a,b)=>edgeOf(a,b)-edgeOf(b,a);
 
-// ---------- золото и опыт: расчёт ----------
+// ---------- золото и опыт: только прямые контрпики, иначе мета патча ----------
 const poolOf=lane=>LANES[lane].order;
-const MECH=1.0, UNSURE=0.5;  // бонус контрпику по механике и штраф за матчап без статистики
-function scoreVs(lane,c,e){
-  const base=wrOf(c)-50, meas=net(c,e);
-  const pe=LANES[lane].E[e].p.find(p=>p[0]===c);
-  const mech=pe&&pe[1]==null&&pe[3]!=="wr"?MECH:0;
-  const unc=!meas&&!mech?UNSURE:0;
-  return {id:c,base,meas,mech,unc,pe,sc:base+meas+mech-unc,exp:wrOf(c)+meas};
+const MIN_EDGE=1.0;   // меньше +1 п.п. считаем шумом, а не контрпиком
+// прямой контрпик: по статистике выигрывает этот матчап (≥ +1 п.п.) или контрит механикой умений, а не «перерастанием»
+function countersOf(lane,e){
+  const E=LANES[lane].E[e], out=[];
+  for(const c of poolOf(lane)){
+    if(c===e||st.ban.has(c)) continue;
+    const meas=net(c,e), pe=E.p.find(p=>p[0]===c);
+    const mech=!!(pe&&pe[1]==null&&pe[3]!=="wr"&&!PATIENCE.has(lane+":"+e+":"+c));
+    if(meas>=MIN_EDGE) out.push({id:c,meas,mech:false,pe});
+    else if(mech&&meas>=0) out.push({id:c,meas:0,mech:true,pe});
+  }
+  return out.sort((a,b)=>(b.meas-a.meas)||(wrOf(b.id)-wrOf(a.id)));
 }
-function rankVs(lane,e){
-  return poolOf(lane).filter(c=>c!==e&&!st.ban.has(c)).map(c=>scoreVs(lane,c,e)).sort((a,b)=>b.sc-a.sc);
+// мета патча: самые сильные герои линии, которых этот соперник не контрит
+function metaOf(lane,e){
+  return poolOf(lane).filter(c=>c!==e&&!st.ban.has(c)&&(!e||net(c,e)>=0))
+    .sort((a,b)=>wrOf(b)-wrOf(a)).slice(0,5).map(c=>({id:c,meas:e?net(c,e):0,mech:false,pe:null,meta:true}));
 }
-// самый сильный ещё не забаненный контрпик с той же линии: враг может взять его позже
-function riskOf(lane,c){
-  let best=null;
-  for(const x of poolOf(lane)){ if(x===c||st.ban.has(x)) continue; const n=net(x,c); if(n>0&&(!best||n>best[1])) best=[x,n]; }
-  return best;
-}
-function rankBlind(lane){
-  return poolOf(lane).filter(c=>!st.ban.has(c)).map(c=>{
-    const base=wrOf(c)-50, risk=riskOf(lane,c);
-    return {id:c,base,risk,sc:base-(risk?risk[1]:0)};
-  }).sort((a,b)=>b.sc-a.sc);
-}
+// кто на линии контрит героя (для предупреждения)
+const laneCounters=(lane,c)=>poolOf(lane).filter(y=>y!==c&&!st.ban.has(y)&&net(y,c)>=MIN_EDGE).sort((a,b)=>net(b,c)-net(a,c));
 // план по стадиям: сравниваем, в какой стадии сильнее каждый из двух героев
 function phasePlan(lane,c,e){
   const pc=LANES[lane].E[c].ph, pe=LANES[lane].E[e].ph;
@@ -112,12 +109,11 @@ function planBlock(lane,c,e){
     ${mu?"":row("Против соперника",pv.vs)}${row("Докупи",buy)}</ul></div>
     ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p>${comboBlock(c)}</div>`:""}`;
 }
-function altsBlock(list,label,fmtv){
-  return `<div><h2 class="sp">${label}</h2><div class="alts">${list.map((x,i)=>
-    `<button class="alt" type="button" data-i="${i}" aria-pressed="${i===st.pick}">${ava(x.id)}${esc(H[x.id][0])}<span class="e">${fmtv(x)}</span></button>`).join("")}</div></div>`;
+const edgeTxt=x=>x.meta?`винрейт ${num(wrOf(x.id))}%`:x.mech?"контрит механикой умений":`${fmt(x.meas)} в матчапе · ≈${num(wrOf(x.id)+x.meas)}% побед`;
+function pickList(list){
+  return `<ul class="bans">${list.map((x,i)=>{const on=i===st.pick, b=banOf(x.id);
+    return `<li><button type="button" class="banrow pk" data-i="${i}" aria-pressed="${on}">${ava(x.id)}<span class="bn"><b>${esc(H[x.id][0])}</b><small>${esc(edgeTxt(x))}${b>=20?` · банят в ${Math.round(b)}%`:""}</small></span><span class="mk">${on?"выбран":"смотреть"}</span></button></li>`;}).join("")}</ul>`;
 }
-const expTxt=x=>x.meas?"≈"+num(x.exp)+"%":x.mech?"мех.":num(wrOf(x.id))+"%";
-
 function drawGrid(){
   const lane=laneOf(), q=$("#q").value.trim().toLowerCase(), sel=st.enemy[lane];
   const ids=poolOf(lane).slice().sort((a,b)=>popOf(b)-popOf(a)).filter(id=>!q||matches(id,q));
@@ -132,34 +128,26 @@ function drawGrid(){
       :"Такого героя нет. Попробуй другое написание.";
   }else em.hidden=true;
   $("#unknownRow").innerHTML=sel?`<span>Соперник: <b>${esc(H[sel][0])}</b></span><button class="link" type="button" id="unk">Не знаю соперника</button>`
-    :`<span>Соперник не выбран — показан лучший слепой пик.</span>`;
+    :`<span>Соперник не выбран — показаны сильные герои патча.</span>`;
 }
 
 function drawVs(lane,e){
-  const d=LANES[lane].E[e], r=rankVs(lane,e);
-  if(!r.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все герои линии в бане.</p>`;return;}
-  if(st.pick>=Math.min(r.length,8)) st.pick=0;
-  const x=r[st.pick], c=x.id, mu=MU[lane+":"+e+":"+c];
-  const why=(mu&&mu.w)||(x.pe&&x.pe[2])||(x.meas>0?"Статистически выигрывает этот матчап и силён в патче.":x.meas<0?"Силён в патче, хотя по статистике этот матчап ему неудобен.":"Сильный герой патча. Прямой статистики по этому матчапу нет.");
-  const lines=[[x.base,`Сила в патче: винрейт ${num(wrOf(c))}% на Мифической чести`]];
-  if(x.meas) lines.push([x.meas,"Матчап с этим соперником по статистике"]);
-  if(x.mech) lines.push([x.mech,"Контрпик по механике умений (статистики нет)"]);
-  if(x.unc) lines.push([-x.unc,"Нет статистики по этому матчапу: оценка менее надёжна"]);
-  const tag=x.meas?`<span class="tag m">≈${num(x.exp)}% побед</span>`:x.mech?`<span class="tag k">по механике</span>`:`<span class="tag k">сила в патче</span>`;
+  const d=LANES[lane].E[e], cnt=countersOf(lane,e), hasC=cnt.length>0;
+  const list=hasC?cnt.slice(0,6):metaOf(lane,e);
+  if(!list.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все герои линии в бане.</p>`;return;}
+  if(st.pick>=list.length) st.pick=0;
+  const x=list[st.pick], c=x.id, mu=MU[lane+":"+e+":"+c];
+  const why=x.meta?(x.meas>0?"Прямым контрпиком не считается, но по статистике этот матчап ему немного удобнее.":"Прямого контрпика к этому сопернику нет. Это сильный герой патча, и соперник его не контрит.")
+    :(mu&&mu.w)||(x.pe&&x.pe[2])||"По статистике выигрывает этот матчап.";
+  const tag=x.meta?`<span class="tag k">мета патча</span>`:x.mech?`<span class="tag k">по механике</span>`:`<span class="tag m">${fmt(x.meas)}</span>`;
   const flat=d.ph.every(v=>v===0);
-  // прямой контрпик: самое большое преимущество именно против этого врага (статистика или механика)
-  const ci=r.reduce((bi,y,i)=>{const v=y.meas+y.mech, bv=bi<0?0:r[bi].meas+r[bi].mech; return v>bv?i:bi;},-1);
-  const cc=ci>=0&&ci!==st.pick?r[ci]:null;
-  const counterCard=cc?`<div class="next"><span>Прямой контрпик:</span> <b>${esc(H[cc.id][0])}</b> — ${cc.meas?`${fmt(cc.meas)} в этом матчапе, ≈${num(cc.exp)}% побед`:"контрит по механике умений"}${banOf(cc.id)>=20?`, банят в ${Math.round(banOf(cc.id))}%`:""}. <button class="link" type="button" data-i="${ci}">Показать его</button></div>`:"";
   $("#result").innerHTML=`${bannedLine()}
     <div class="versus">Против: <b>${esc(H[e][0])}</b>${st.ban.has(e)?` <span class="tag k">в бане</span>`:""}</div>
+    <div><h2 class="sp">${hasC?"Прямые контрпики":"Прямого контрпика нет — сильные герои патча"}</h2>${pickList(list)}</div>
     <div class="verdict">${ava(c,true)}<span class="name">Бери: ${esc(H[c][0])}</span>${tag}</div>
     <p class="why">${esc(why)}</p>
-    <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.map(pmLine).join("")}</ul></div>
-    ${counterCard}
     ${banWarn(c)}${banButton(c)}
     ${planBlock(lane,c,e)}
-    ${altsBlock(r.slice(0,8),"Другие варианты",expTxt)}
     ${buildBlock(c,lane)}
     <div><h2 class="sp">Когда соперник опасен</h2>
       ${flat?`<p class="note">Заметной разницы между стадиями игры нет.</p>`:`<div class="phase">${phaseBox(d.ph[0],"Начало","0–10 мин")}${phaseBox(d.ph[1],"Середина","10–16 мин")}${phaseBox(d.ph[2],"Поздняя","16+ мин")}</div>`}</div>
@@ -169,26 +157,20 @@ function drawVs(lane,e){
 }
 
 function drawBlind(lane){
-  const r=rankBlind(lane);
-  if(!r.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все герои линии в бане.</p>`;return;}
-  if(st.pick>=Math.min(r.length,8)) st.pick=0;
-  const x=r[st.pick], c=x.id, pc=PROF[c]||{};
-  const lines=[[x.base,`Сила в патче: винрейт ${num(wrOf(c))}% на Мифической чести`]];
-  if(x.risk) lines.push([-x.risk[1],`Риск: на линии его контрит ${H[x.risk[0]][0]}, враг может взять его позже`]);
-  const why=x.risk?`Если соперник уже открыт и это не ${H[x.risk[0]][0]}, или ${H[x.risk[0]][0]} в бане, риска нет.`
-    :"Измеренных контрпиков на линии у него не осталось: можно брать, не видя соперника.";
-  const cnt=poolOf(lane).filter(y=>y!==c&&net(y,c)>0).sort((a,b)=>net(b,c)-net(a,c)).slice(0,5);
+  const list=metaOf(lane,null);
+  if(!list.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все герои линии в бане.</p>`;return;}
+  if(st.pick>=list.length) st.pick=0;
+  const c=list[st.pick].id, pc=PROF[c]||{}, cnt=laneCounters(lane,c).slice(0,5);
   $("#result").innerHTML=`${bannedLine()}
-    <div class="versus">Слепой пик на <b>${lane==="gold"?"линию золота":"линию опыта"}</b></div>
-    <div class="verdict">${ava(c,true)}<span class="name">Бери: ${esc(H[c][0])}</span><span class="tag ${x.sc>=0?"m":"k"}">оценка ${sgn(x.sc)}</span></div>
-    <p class="why">${esc(why)}</p>
-    <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.map(pmLine).join("")}</ul></div>
+    <div class="versus">Соперник по линии не выбран</div>
+    <div><h2 class="sp">Сильные герои патча на ${lane==="gold"?"линии золота":"линии опыта"}</h2>${pickList(list)}</div>
+    <div class="verdict">${ava(c,true)}<span class="name">${esc(H[c][0])}</span><span class="tag m">${num(wrOf(c))}% побед</span></div>
+    <p class="why">${cnt.length?`Его контрит на линии ${esc(H[cnt[0]][0])} — если соперник уже открыт и это не он, бери смело.`:"Прямых контрпиков на линии у него нет: можно брать, не видя соперника."}</p>
     ${banWarn(c)}${banButton(c)}
     ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p>${comboBlock(c)}</div>`:""}
-    ${cnt.length?`<div><h2 class="sp">Кого опасаться на линии</h2><div class="rows">${cnt.map(y=>`<span class="pill bad">${esc(H[y][0])}<i>−${num(net(y,c))}</i></span>`).join("")}</div></div>`:""}
-    ${altsBlock(r.slice(0,8),"Рейтинг для слепого пика",y=>sgn(y.sc))}
+    ${cnt.length?`<div><h2 class="sp">Кто его контрит на линии</h2><div class="rows">${cnt.map(y=>`<span class="pill bad">${esc(H[y][0])}<i>−${num(net(y,c))}</i></span>`).join("")}</div></div>`:""}
     ${buildBlock(c,lane)}
-    <p class="note">Как только увидишь соперника по линии, выбери его в списке выше: совет станет точнее.</p>`;
+    <p class="note">Как только увидишь соперника по линии, выбери его в списке выше: покажу прямые контрпики.</p>`;
 }
 
 // ---------- роум: метовые герои + ситуация ----------

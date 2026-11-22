@@ -29,9 +29,9 @@ _sp=_iu.spec_from_file_location('matchups',os.path.join(os.path.dirname(os.path.
 MU_JS = 'const MU=' + json.dumps(_m.MU, ensure_ascii=False) + ';\n'
 _sp2=_iu.spec_from_file_location('profiles',os.path.join(os.path.dirname(os.path.abspath(__file__)),'profiles.py')); _p=_iu.module_from_spec(_sp2); _sp2.loader.exec_module(_p)
 J=lambda o: json.dumps(o, ensure_ascii=False)
-PROF_JS = ('const PROF=%s;\nconst COMBO=%s;\nconst ROAM_META=%s;\nconst ROAM_CHIPS=%s;\nObject.assign(IT,%s);\nObject.assign(SP,%s);\n'
+PROF_JS = ('const PATIENCE=new Set(%s);\nconst PROF=%s;\nconst COMBO=%s;\nconst ROAM_META=%s;\nconst ROAM_CHIPS=%s;\nObject.assign(IT,%s);\nObject.assign(SP,%s);\n'
            'for(const [k,v] of Object.entries(%s))B[k]={i:v[0],s:v[1],n:v[2]};\n') % (
-    J(_p.PROF), J(_p.COMBO), J(_p.ROAM_META), J(_p.ROAM_CHIPS), J(_p.ITEM_ADD), J(_p.SPELL_ADD), J(_p.BUILD_FIX))
+    J(_p.PATIENCE), J(_p.PROF), J(_p.COMBO), J(_p.ROAM_META), J(_p.ROAM_CHIPS), J(_p.ITEM_ADD), J(_p.SPELL_ADD), J(_p.BUILD_FIX))
 s = s[:i] + MU_JS + PROF_JS + open('runtime.js', encoding='utf8').read() + s[j:]
 
 # markup
@@ -94,7 +94,7 @@ s = s[:_a] + """  <div class="switches">
 _a = s.index('  <footer>'); _b = s.index('  </footer>')
 s = s[:_a] + """  <footer>
     <div><b>Откуда данные.</b> Винрейты и баны — Мифическая честь (25–49 звёзд) за 7 дней. Матчапы «+N п.п.» — насколько винрейт героя вырастает против конкретного врага по ранговым играм всех рангов. Источник — mlbbhub.</div>
-    <div><b>Золото и опыт.</b> Если соперник выбран, оценка = (винрейт героя − 50) + матчап против соперника по статистике. Контрпик по механике без статистики получает +1, пара без статистики −0,5. «≈X% побед» = винрейт героя + матчап. Если соперник не выбран, оценка = (винрейт − 50) минус самый сильный ещё не забаненный контрпик с этой же линии: враг может взять его позже.</div>
+    <div><b>Золото и опыт.</b> Если соперник выбран, показываются только прямые контрпики: герои, которые по статистике выигрывают этот матчап хотя бы на +1 п.п., или контрят его механикой умений. Варианты «переживи начало и перерасти» не считаются. Если прямого контрпика нет, показаны сильнейшие герои линии по винрейту, которых этот соперник не контрит. «≈X% побед» = винрейт героя + матчап. Если соперник не выбран — сильнейшие герои линии и кто их контрит.</div>
     <div><b>План на матчап.</b> Начало и середина игры взяты из разобранной вручную пары, а если её нет — из статистики винрейта по стадиям игры (до 10, 10–16 и после 16 минуты) у обоих героев.</div>
     <div><b>Роум.</b> Восемь сильнейших роумеров патча по винрейту на Мифической чести. Оценка = половина разницы винрейта с 50% плюс бонус за отмеченную ситуацию: все восемь и так сильные, поэтому решает то, кто подходит под драфт. Если все восемь в бане, показан следующий по силе.</div>
     <div><b>Баны.</b> Список отсортирован по угрозе = (винрейт − 50) + бан-рейт / 20. У героев, которых банят очень часто, винрейт посчитан по меньшему числу игр.</div>
@@ -107,6 +107,9 @@ rep('<title>Контрпики MLBB по всем линиям</title>', '<title
 css = '''
 .mu{margin:10px 0 4px}
 #unknownRow{margin:0 0 8px}
+.banrow.pk[aria-pressed="true"]{background:var(--gold-soft);border-color:var(--gold)}
+.banrow.pk[aria-pressed="true"] b{text-decoration:none}
+.banrow.pk[aria-pressed="true"] .mk{background:var(--gold);border-color:var(--gold);color:#fff}
 .combo{margin:6px 0 0}.combo li{margin:4px 0}.combo b{font-weight:600}
 #grid{grid-template-columns:repeat(3,1fr);gap:6px}
 #grid .chip{padding:6px;gap:6px;font-size:13px;min-height:40px}
