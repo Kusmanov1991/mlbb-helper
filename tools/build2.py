@@ -27,11 +27,16 @@ i = s.index('const $=s=>document.querySelector(s);'); j = s.index('</script>')
 import importlib.util as _iu
 _sp=_iu.spec_from_file_location('matchups',os.path.join(os.path.dirname(os.path.abspath(__file__)),'matchups.py')); _m=_iu.module_from_spec(_sp); _sp.loader.exec_module(_m)
 MU_JS = 'const MU=' + json.dumps(_m.MU, ensure_ascii=False) + ';\n'
-s = s[:i] + MU_JS + open('runtime.js', encoding='utf8').read() + s[j:]
+_sp2=_iu.spec_from_file_location('profiles',os.path.join(os.path.dirname(os.path.abspath(__file__)),'profiles.py')); _p=_iu.module_from_spec(_sp2); _sp2.loader.exec_module(_p)
+J=lambda o: json.dumps(o, ensure_ascii=False)
+PROF_JS = ('const PROF=%s;\nconst ROAM_META=%s;\nconst ROAM_CHIPS=%s;\nObject.assign(IT,%s);\nObject.assign(SP,%s);\n'
+           'for(const [k,v] of Object.entries(%s))B[k]={i:v[0],s:v[1],n:v[2]};\n') % (
+    J(_p.PROF), J(_p.ROAM_META), J(_p.ROAM_CHIPS), J(_p.ITEM_ADD), J(_p.SPELL_ADD), J(_p.BUILD_FIX))
+s = s[:i] + MU_JS + PROF_JS + open('runtime.js', encoding='utf8').read() + s[j:]
 
 # markup
 rep('<title>Контрпики по всем линиям</title>', '<title>Контрпики MLBB по всем линиям</title>')
-rep('данные матчапов на 15–16 ноября 2026', 'матчапы на 15–17 ноября, винрейты и баны Мифической чести на 17 ноября 2026')
+rep('данные матчапов на 15–16 ноября 2026', 'матчапы на 15–17 ноября, винрейты и баны Мифической чести на 21 ноября 2026')
 rep('''      <button type="button" data-mode="known">Знаю, кто на линии</button>
       <button type="button" data-mode="blind">Пикаю вслепую</button>''',
     '''      <button type="button" data-mode="known">Знаю врага</button>
@@ -60,8 +65,54 @@ rep('для части героев последние данные от пат�
 rep('<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a></div>',
     '<div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a>, <a href="https://mlbbhub.com/draft">mlbbhub.com/draft</a></div>')
 
+# ---- разделы: золото, опыт, роум, баны (мид и лес спрятаны) ----
+_a = s.index('  <div class="switches">'); _b = s.index('  <section class="card" id="result"')
+s = s[:_a] + """  <div class="switches">
+    <div class="seg lane" id="laneSeg" role="group" aria-label="Раздел">
+      <button type="button" data-tab="gold">Золото</button>
+      <button type="button" data-tab="exp">Опыт</button>
+      <button type="button" data-tab="roam">Роум</button>
+      <button type="button" data-tab="bans">Баны</button>
+    </div>
+  </div>
+
+  <section class="picker" id="pickKnown" aria-label="Соперник по линии">
+    <h2>Кто соперник по линии</h2>
+    <div class="selrow" id="unknownRow"></div>
+    <input id="q" type="search" placeholder="Поиск героя" autocomplete="off" aria-label="Поиск героя">
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+  </section>
+
+  <section class="picker" id="pickRoam" aria-label="Ситуация в драфте" hidden>
+    <h2>Что видно в драфте</h2>
+    <p class="hint">Отметь, если знаешь. Можно ничего не отмечать: тогда порядок по силе в патче.</p>
+    <div class="pool" id="chips"></div>
+  </section>
+
+""" + s[_b:]
+_a = s.index('  <footer>'); _b = s.index('  </footer>')
+s = s[:_a] + """  <footer>
+    <div><b>Откуда данные.</b> Винрейты и баны — Мифическая честь (25–49 звёзд) за 7 дней. Матчапы «+N п.п.» — насколько винрейт героя вырастает против конкретного врага по ранговым играм всех рангов. Источник — mlbbhub.</div>
+    <div><b>Золото и опыт.</b> Если соперник выбран, оценка = (винрейт героя − 50) + матчап против соперника по статистике. Контрпик по механике без статистики получает +1, пара без статистики −0,5. «≈X% побед» = винрейт героя + матчап. Если соперник не выбран, оценка = (винрейт − 50) минус самый сильный ещё не забаненный контрпик с этой же линии: враг может взять его позже.</div>
+    <div><b>План на матчап.</b> Начало и середина игры взяты из разобранной вручную пары, а если её нет — из статистики винрейта по стадиям игры (до 10, 10–16 и после 16 минуты) у обоих героев.</div>
+    <div><b>Роум.</b> Восемь сильнейших роумеров патча по винрейту на Мифической чести. Оценка = половина разницы винрейта с 50% плюс бонус за отмеченную ситуацию: все восемь и так сильные, поэтому решает то, кто подходит под драфт. Если все восемь в бане, показан следующий по силе.</div>
+    <div><b>Баны.</b> Список отсортирован по угрозе = (винрейт − 50) + бан-рейт / 20. У героев, которых банят очень часто, винрейт посчитан по меньшему числу игр.</div>
+    <div><b>Сборки.</b> Базовый порядок закупки на всю игру, названия как в русской версии. Сборки части героев опыта шаблонные: сверяй с рекомендуемыми в игре.</div>
+    <div><b>Значки.</b> Кружки с буквами и значки предметов нарисованы для этой страницы: красный — физический урон, фиолетовый — магия, зелёный — защита, золотой — ботинки. Это не игровые иконки.</div>
+    <div>Источник: <a href="https://mlbbhub.com/counter">mlbbhub.com/counter</a>, <a href="https://mlbbhub.com/statistics">mlbbhub.com/statistics</a>, <a href="https://mlbbhub.com/heroes">mlbbhub.com/heroes</a></div>
+""" + s[_b:]
+rep('<title>Контрпики MLBB по всем линиям</title>', '<title>Контрпики MLBB: золото, опыт, роум</title>')
+
 css = '''
 .mu{margin:10px 0 4px}
+#unknownRow{margin:0 0 8px}
+#grid{grid-template-columns:repeat(3,1fr);gap:6px}
+#grid .chip{padding:6px;gap:6px;font-size:13px;min-height:40px}
+#grid .chip .ava{width:26px;height:26px;font-size:10px}
+#chips{max-height:none;overflow:visible}
+#chips{gap:8px}
+.link[data-banpick]{display:block;text-align:left;margin:2px 0 4px}
 .order{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;font-size:.95rem}
 .order .mini{display:flex;gap:4px}.order .mini button{padding:6px 12px;border-radius:999px;border:1px solid var(--line,#ddd);background:transparent;font:inherit;color:inherit}
 .order .mini button[aria-pressed=true]{background:var(--accent,#a86b00);color:#fff;border-color:transparent}

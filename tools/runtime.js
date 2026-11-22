@@ -8,202 +8,46 @@ const AB={popol:"ПК",luoyi:"ЛЙ",xborg:"ИБ",yuzhong:"ЮЧ",yisunshin:"ЛС"
 const ava=(id,big)=>{const ru=H[id][0];let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;
  return `<span class="ava${big?" big":""}" style="background:hsl(${h} 42% 38%)" aria-hidden="true">${AB[id]||ru.slice(0,2)}</span>`;};
 const LANE_NAME={gold:"Золото",mid:"Мид",roam:"Роум",exp:"Опыт",jungle:"Лес"};
-const LANE_TO={gold:"линию золота",mid:"мид",roam:"роум",exp:"линию опыта",jungle:"лес"};
+const TITLE={gold:"линии золота",exp:"линии опыта",roam:"для роума",bans:"и баны"};
 const RU2ID={};for(const k in H)RU2ID[H[k][0]]=k;
 const wrOf=id=>MH[id]?MH[id][0]:50;
-// blind-pick win rates come from Mythical Honor
-for(const l in BL)BL[l].forEach(c=>{if(MH[c.id])c.wr=MH[c.id][0];});
+const banOf=id=>MH[id]?MH[id][1]:0;
+const popOf=id=>POP[id]||0;
+const TABS=["gold","exp","roam","bans"];   // мид и лес спрятаны: данные остались, вкладок нет
 
-const st={lane:"gold",mode:"known",enemy:{gold:"brody",mid:"valir",roam:"marcel",exp:"masha",jungle:"ling"},pick:0,
- sel:{gold:new Set(),mid:new Set(),roam:new Set(),exp:new Set(),jungle:new Set()},bpick:0,ban:new Set(),side:"first",slot:1};
+const st={tab:"gold",enemy:{gold:null,exp:null},pick:0,ban:new Set(),chips:new Set()};
+const laneOf=()=>st.tab==="gold"||st.tab==="exp"?st.tab:null;
 
-function bannedLine(){
-  if(!st.ban.size) return "";
-  return `<div class="banline"><span>В бане: ${[...st.ban].map(id=>esc(H[id][0])).join(", ")}</span><button class="link" type="button" data-go="draft">изменить</button></div>`;
-}
-
-function buildBlock(id){
-  const b=B[id+"@"+st.lane]||B[id];
+// ---------- общие куски ----------
+function buildBlock(id,lane){
+  const b=B[id+"@"+lane]||B[id];
+  if(!b) return "";
   return `<div><h2 class="sp">Закуп на всю игру: ${esc(H[id][0])}</h2>
       <ol class="build">${b.i.map(x=>`<li>${ico(x)}<span>${esc(IT[x][0])}</span></li>`).join("")}</ol></div>
-    <div class="meta"><span>Заклинание: <b>${esc(SP[b.s])}</b></span>${b.r?`<span>${esc(b.rk||"Благословение роума")}: <b>${esc(b.r)}</b></span>`:""}</div>
+    <div class="meta"><span>Заклинание: <b>${esc(SP[b.s]||b.s)}</b></span>${b.r?`<span>${esc(b.rk||"Благословение роума")}: <b>${esc(b.r)}</b></span>`:""}</div>
     <p class="note">${esc(b.n)}</p>`;
 }
-
-// old transliterations stay searchable after switching to the in-game Russian names
+function bannedLine(){
+  if(!st.ban.size) return "";
+  return `<div class="banline"><span>В бане: ${[...st.ban].map(id=>esc(H[id][0])).join(", ")}</span><button class="link" type="button" data-tab="bans">изменить</button></div>`;
+}
 const ALIAS={zetian:"Зетиан",luoyi:"Луо И",pharsa:"Фарса",zhuxin:"Чжу Синь",vale:"Вейл",aamon:"Аамон",bane:"Бейн",barats:"Баратс",baxia:"Баксия",change:"Чанъэ",dyrroth:"Дайрот Джавхед",jawhead:"Джавхед",kalea:"Калея",rafaela:"Рафаэла",silvanna:"Сильванна",suyou:"Суё Су Е",terizla:"Теризла",yisunshin:"И Сун-Син",yuzhong:"Ю Чжун Чонг",fredrinn:"Фредерин"};
 function matches(id,q){const [ru,en]=H[id];return ru.toLowerCase().includes(q)||en.toLowerCase().includes(q)||(ALIAS[id]||"").toLowerCase().includes(q);}
-function drawGrid(){
-  const L=LANES[st.lane], q=$("#q").value.trim().toLowerCase();
-  let shown=0;
-  $("#grid").innerHTML=L.order.map(id=>{
-    const [ru,en]=H[id];
-    if(q && !matches(id,q)) return "";
-    shown++;
-    const bn=st.ban.has(id);
-    return `<button class="chip${bn?" banned":""}" type="button" data-id="${id}" aria-pressed="${id===st.enemy[st.lane]}">${ava(id)}<span>${esc(ru)}<small>${bn?"в бане":esc(en)}</small></span></button>`;
-  }).join("");
-  let other=[];
-  if(q){for(const l in LANES){if(l===st.lane)continue;for(const id of LANES[l].order)if(matches(id,q)&&!L.order.includes(id))other.push([l,id]);}}
-  const em=$("#empty");
-  if(other.length){
-    em.hidden=false;
-    em.innerHTML=`<span>${shown?"Ещё на других линиях:":"На этой линии такого героя нет. Он есть здесь:"}</span><div class="alts">${other.slice(0,8).map(([l,id])=>
-      `<button class="alt" type="button" data-golane="${l}" data-id="${id}">${ava(id)}${esc(H[id][0])}<span class="e">${LANE_NAME[l]}</span></button>`).join("")}</div>`;
-  }else{
-    em.hidden=shown>0;
-    em.innerHTML="Такого героя нет. Попробуй другое написание.";
-  }
-}
-
 function phaseBox(v,label,time){
   const cls=v>0?"hi":v<0?"lo":"";
   const txt=v>0?"сильный":v<0?"слабый":"ровно";
   return `<div class="${cls}"><b>${label}</b>${time}<br>${txt}</div>`;
 }
-
-function muBlock(mu,pid,ru){
-  if(!mu) return "";
-  const row=(k,t)=>t?`<li><b>${k}.</b> ${esc(t)}</li>`:"";
-  return `<div class="mu"><h2 class="sp">План на матчап «${esc(H[pid][0])} — ${esc(ru)}»</h2><ul class="plain">
-    ${row("Начало",mu.e)}${row("Дальше",mu.l)}${row("Не делай",mu.x)}${row("Сборка",mu.b)}</ul></div>`;
+const pmLine=([v,t])=>`<li class="${v>=0?"up":"dn"}"><b>${sgn(v)}</b><span>${esc(t)}</span></li>`;
+function banButton(id){
+  return `<button class="link" type="button" data-banpick="${id}">${esc(H[id][0])} в бане → показать следующего</button>`;
 }
-function drawKnown(){
-  const enemy=st.enemy[st.lane], d=LANES[st.lane].E[enemy], ru=H[enemy][0];
-  const PL=d.p.filter(x=>!st.ban.has(x[0]));
-  if(st.pick>=PL.length) st.pick=0;
-  const flat=d.ph.every(v=>v===0);
-  const rest=`
-    <div><h2 class="sp">Когда ${esc(ru)} опасен</h2>
-      ${flat?`<p class="note">Заметной разницы между стадиями игры нет.</p>`:`<div class="phase">${phaseBox(d.ph[0],"Начало","0–10 мин")}${phaseBox(d.ph[1],"Середина","10–16 мин")}${phaseBox(d.ph[2],"Поздняя","16+ мин")}</div>`}</div>
-    <div><h2 class="sp">Как играть</h2><ul class="plain">${d.tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
-    <div><h2 class="sp">Попроси у команды</h2><div class="rows">${d.t.map(x=>`<span class="pill">${esc(x[0])}<i>${fmt(x[1])}</i></span>`).join("")}</div></div>
-    ${d.a.length?`<div><h2 class="sp">Не бери против него</h2><div class="rows">${d.a.map(x=>`<span class="pill bad">${esc(x[0])}<i>−${num(x[1])}</i></span>`).join("")}</div></div>`:""}`;
-  const head=`${bannedLine()}<div class="versus">Против: <b>${esc(ru)}</b>${st.ban.has(enemy)?` <span class="tag k">в бане</span>`:""}</div>`;
-  if(!PL.length){
-    $("#result").innerHTML=`${head}<p class="why">Все подобранные контрпики в бане. Возьми героя, который тебе привычен, и смотри советы ниже.</p>${rest}`;
-    return;
-  }
-  const [pid,edge,w,kind]=PL[st.pick]; const mu=MU[st.lane+":"+enemy+":"+pid]; const why=(mu&&mu.w)||w||WK[pid]||"";
-  const tag=edge!=null?`<span class="tag m">${fmt(edge)} к винрейту</span>`:`<span class="tag k">${kind==="wr"?"по винрейту":"по механике"}</span>`;
-  const alts=PL.length>1?`<div><h2 class="sp">Варианты</h2><div class="alts">${PL.map((x,i)=>
-    `<button class="alt" type="button" data-i="${i}" aria-pressed="${i===st.pick}">${ava(x[0])}${esc(H[x[0]][0])}<span class="e">${x[1]!=null?fmt(x[1]):x[3]==="wr"?"винр.":"мех."}</span></button>`).join("")}</div></div>`:"";
-  $("#result").innerHTML=`${head}
-    <div class="verdict">${ava(pid,true)}<span class="name">Бери: ${esc(H[pid][0])}</span>${tag}</div>
-    <p class="why">${esc(why)}</p>
-    ${muBlock(mu,pid,ru)}
-    ${alts}
-    ${buildBlock(pid)}
-    ${rest}`;
+function banWarn(id){
+  const b=banOf(id);
+  return b>=20?`<p class="note"><span class="tag w">часто банят</span> ${esc(H[id][0])} банят в ${Math.round(b)}% игр на Мифической чести. Держи запасной вариант из списка ниже.</p>`:"";
 }
 
-function poolNames(){
-  const s=new Set();
-  for(const c of BL[st.lane]){c.c.forEach(x=>s.add(x[0]));c.s.forEach(x=>s.add(x[0]));}
-  return [...s].filter(n=>!(RU2ID[n]&&st.ban.has(RU2ID[n]))).sort((a,b)=>a.localeCompare(b,"ru"));
-}
-function drawPool(){
-  const q=$("#q2").value.trim().toLowerCase(), sel=st.sel[st.lane];
-  const names=poolNames().filter(n=>!q||n.toLowerCase().includes(q));
-  $("#pool").innerHTML=names.length?names.map(n=>`<button class="tog" type="button" data-n="${esc(n)}" aria-pressed="${sel.has(n)}">${esc(n)}</button>`).join("")
-    :`<span class="empty">По этому герою нет статистики против героев из списка. Он не влияет на оценку.</span>`;
-  $("#selrow").innerHTML=sel.size?`<span>Отмечено: ${sel.size}</span><button class="link" type="button" id="clr">Сбросить</button>`:"";
-}
-// strongest same-lane counter that the enemy can still pick
-function laneRisk(id){
-  const d=LANES[st.lane].E[id]; if(!d) return null;
-  let best=null;
-  for(const p of d.p){
-    if(p[1]==null||st.ban.has(p[0])||st.sel[st.lane].has(H[p[0]][0])) continue;
-    if(!best||p[1]>best[1]) best=p;
-  }
-  return best;
-}
-function rank(){
-  const sel=st.sel[st.lane];
-  return BL[st.lane].filter(c=>!st.ban.has(c.id)&&!sel.has(H[c.id][0])).map(c=>{
-    let sc=c.wr-50; const up=[],dn=[];
-    for(const [n,e] of c.s) if(sel.has(n)){sc+=e;up.push([n,e]);}
-    for(const [n,e] of c.c) if(sel.has(n)){sc-=e;dn.push([n,e]);}
-    const risk=laneRisk(c.id); if(risk) sc-=risk[1];
-    return {c,sc,up,dn,risk};
-  }).sort((a,b)=>b.sc-a.sc);
-}
-function drawBlind(){
-  const sel=st.sel[st.lane], r=rank();
-  if(!r.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все герои из списка в бане или уже у врага.</p>`;return;}
-  if(st.bpick>=Math.min(r.length,12)) st.bpick=0;
-  const x=r[st.bpick], id=x.c.id, any=sel.size>0;
-  const lines=[`<li class="${x.c.wr>=50?"up":"dn"}"><b>${sgn(x.c.wr-50)}</b><span>Винрейт ${num(x.c.wr)}% на Мифической чести за 7 дней</span></li>`]
-    .concat(x.up.map(([n,e])=>`<li class="up"><b>+${num(e)}</b><span>Силён против: ${esc(n)}</span></li>`))
-    .concat(x.dn.map(([n,e])=>`<li class="dn"><b>−${num(e)}</b><span>Его контрит: ${esc(n)}</span></li>`))
-    .concat(x.risk?[`<li class="dn"><b>−${num(x.risk[1])}</b><span>Риск: на линии его контрит ${esc(H[x.risk[0]][0])}, враг может взять его позже</span></li>`]:[]);
-  const why=x.risk
-    ?`<p class="why"><span class="tag w">риск</span> На линии его контрит ${esc(H[x.risk[0]][0])} (${fmt(x.risk[1])}). Если соперник по линии уже открыт и это не он, или ${esc(H[x.risk[0]][0])} в бане, риска нет.</p>`
-    :`<p class="why">Ни одного измеренного контрпика с его линии сейчас не осталось, поэтому его можно брать, не видя соперника.</p>`;
-  $("#result").innerHTML=`${bannedLine()}
-    <div class="versus">Слепой пик на <b>${LANE_TO[st.lane]}</b>${any?`, у врага отмечено: <b>${[...sel].map(esc).join(", ")}</b>`:""}</div>
-    <div class="verdict">${ava(id,true)}<span class="name">Бери: ${esc(H[id][0])}</span><span class="tag ${x.sc>=0?"m":"k"}">оценка ${sgn(x.sc)}</span></div>
-    ${why}
-    <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.join("")}</ul></div>
-    <div><h2 class="sp">Рейтинг для этого состава</h2><div class="alts">${r.slice(0,12).map((y,i)=>
-      `<button class="alt" type="button" data-b="${i}" aria-pressed="${i===st.bpick}">${ava(y.c.id)}${esc(H[y.c.id][0])}<span class="e">${sgn(y.sc)}</span></button>`).join("")}</div></div>
-    ${buildBlock(id)}
-    <div><h2 class="sp">Кого опасаться и банить</h2><div class="rows">${x.c.c.map(y=>`<span class="pill bad">${esc(y[0])}<i>−${num(y[1])}</i></span>`).join("")}</div></div>
-    <div><h2 class="sp">Против кого он силён</h2><div class="rows">${x.c.s.map(y=>`<span class="pill">${esc(y[0])}<i>+${num(y[1])}</i></span>`).join("")}</div></div>`;
-}
-
-// ---- bans and draft order ----
-const threat=id=>(MH[id][0]-50)+MH[id][1]/20;
-function banGroup(id){
-  const [w,b]=MH[id];
-  if(w>=52&&b>=15) return ["сильный, его банят","m"];
-  if(w>=53.5&&b<15) return ["сильный, но редко банят","w"];
-  if(b>=25&&w<52) return ["банят часто, винрейт обычный","k"];
-  return null;
-}
-const SEQ=["A1","B1","B2","A2","A3","B3","B4","A4","A5","B5"];
-function drawDraft(){
-  const me=(st.side==="first"?"A":"B")+st.slot, idx=SEQ.indexOf(me);
-  const seen=SEQ.slice(0,idx).filter(x=>x[0]!==me[0]).length;
-  let adv, go;
-  if(seen===0){adv="Ты пикаешь первым во всём драфте и не видишь ни одного врага. Бери сильного героя, которого трудно законтрить на линии. Во «Вслепую» рейтинг это учитывает.";go="blind";}
-  else if(seen<4){adv=`К твоему ходу будет видно врагов: ${seen}. Соперник по линии, скорее всего, ещё не выбран. Открой «Вслепую» и отметь видимых врагов.`;go="blind";}
-  else if(seen===4){adv="Будет видно 4 врага. Если среди них твой соперник по линии, бери прямой контрпик в «Знаю врага», если нет — «Вслепую».";go="known";}
-  else {adv="Ты последний пик: видна вся команда врага. Бери прямой контрпик в «Знаю врага».";go="known";}
-  let roleNote="";
-  if(idx<=2&&(st.lane==="gold"||st.lane==="mid")) roleNote="Золото и мид обычно пикают последними, когда уже ясны танк и лесник. Если роумер или лесник твоей команды пикает позже тебя, договоритесь в чате, кто какую роль берёт. Если поменяться не выходит, бери героя для слепого пика.";
-  if(idx>=7&&(st.lane==="roam"||st.lane==="jungle")) roleNote="Роумера и лесника обычно берут рано: от них зависит стиль драк. На позднем пике это плюс: можно взять роумера или лесника прямо под состав врага.";
-  const seq=SEQ.map((x,i)=>`<div class="sq ${x[0]===me[0]?"us":"them"}${x===me?" me":""}"><b>${i+1}</b>${x[0]===me[0]?"Мы":"Враг"} ${x[1]}</div>`).join("");
-  const list=Object.keys(MH).sort((a,b)=>threat(b)-threat(a)).slice(0,18);
-  const next=list.filter(id=>!st.ban.has(id)).slice(0,3);
-  const bq=($("#bq")&&$("#bq").value||"").trim().toLowerCase();
-  const found=bq?Object.keys(MH).filter(id=>matches(id,bq)).slice(0,10):[];
-  $("#result").innerHTML=`
-    <div><h2 class="sp">Твой ход в драфте</h2>
-      <div class="seg" role="group" aria-label="Чья команда пикает первой">
-        <button type="button" data-side="first" aria-pressed="${st.side==="first"}">Мы пикаем первыми</button>
-        <button type="button" data-side="second" aria-pressed="${st.side==="second"}">Враг первым</button></div></div>
-    <div><h2 class="sp">Мой номер в команде (сверху вниз)</h2>
-      <div class="seg" role="group" aria-label="Номер в команде">${[1,2,3,4,5].map(n=>`<button type="button" data-slot="${n}" aria-pressed="${st.slot===n}">${n}</button>`).join("")}</div></div>
-    <div class="verdict"><span class="name">Пик ${idx+1} из 10</span><span class="tag ${seen>=4?"m":"w"}">видно врагов: ${seen}</span></div>
-    <div class="seq" aria-label="Порядок пиков">${seq}</div>
-    <p class="why">${esc(adv)}</p>
-    ${roleNote?`<p class="note">${esc(roleNote)}</p>`:""}
-    <button class="go" type="button" data-go="${go}">Открыть «${go==="blind"?"Вслепую":"Знаю врага"}» для линии ${esc(LANE_NAME[st.lane].toLowerCase())}</button>
-    <div><h2 class="sp">Баны на Мифической чести (25–49 звёзд)</h2>
-      <p class="note">Каждая команда банит 5 героев вслепую и одновременно, в две волны: сначала 3, после раскрытия ещё 2. Отмечай забаненных героев обеих команд: страница уберёт их из рекомендаций.</p></div>
-    <div class="next"><span>Следующий бан:</span> ${next.map(id=>`<b>${esc(H[id][0])}</b>`).join(", ")}</div>
-    <ul class="bans">${list.map(id=>{const g=banGroup(id),[w,b]=MH[id],on=st.ban.has(id);
-      return `<li><button type="button" class="banrow" data-ban="${id}" aria-pressed="${on}">${ava(id)}<span class="bn"><b>${esc(H[id][0])}</b><small>винрейт ${num(w)}% · банят в ${Math.round(b)}%</small></span>${g?`<span class="tag ${g[1]}">${g[0]}</span>`:""}<span class="mk">${on?"в бане":"бан"}</span></button></li>`;}).join("")}</ul>
-    <div><h2 class="sp">Отметить другого героя в бане</h2>
-      <input id="bq" type="search" placeholder="Имя героя" autocomplete="off" aria-label="Найти героя для бана" value="${esc(bq)}">
-      <div class="alts" id="bfound">${found.map(id=>`<button class="alt" type="button" data-ban="${id}" aria-pressed="${st.ban.has(id)}">${ava(id)}${esc(H[id][0])}<span class="e">${st.ban.has(id)?"в бане":"бан"}</span></button>`).join("")}</div></div>
-    <button class="link" type="button" data-reset="1">Новый матч: снять все баны и отметки</button>`;
-}
-
-
-// ---- win prediction: matchup matrix built from every lane's data ----
+// ---------- матрица матчапов из данных всех линий (включая спрятанные) ----------
 const MX={};
 function addM(a,b,e){if(!a||!b||a===b||!(e>0))return;const r=MX[a]||(MX[a]={});if(!(r[b]>=e))r[b]=e;}
 for(const l in LANES){const E=LANES[l].E;for(const id in E){const d=E[id];
@@ -212,221 +56,212 @@ for(const l in LANES){const E=LANES[l].E;for(const id in E){const d=E[id];
   d.a.forEach(([n,e])=>addM(id,RU2ID[n],e));}}
 for(const l in BL)BL[l].forEach(c=>{c.c.forEach(([n,e])=>addM(RU2ID[n],c.id,e));c.s.forEach(([n,e])=>addM(c.id,RU2ID[n],e));});
 const edgeOf=(a,b)=>(MX[a]&&MX[a][b])||0;
-const ALL_IDS=Object.keys(MH).sort((a,b)=>H[a][0].localeCompare(H[b][0],"ru"));
-st.teams={us:[],them:[]};st.tside="us";
-function predict(A,B){
-  // heroes not picked yet count as average (win rate 50, no matchups), so divide by 5 always
-  const mean=X=>X.reduce((t,id)=>t+(wrOf(id)-50),0)/5;
-  const pairs=[];let netSum=0;
-  for(const a of A)for(const b of B){const n=edgeOf(a,b)-edgeOf(b,a);if(n){pairs.push([a,b,n]);netSum+=n;}}
-  const strength=(mean(A)-mean(B))/2;          // half the gap in average hero win rate
-  const match=netSum/5; // average edge per hero across the matchups between the teams
-  const raw=50+strength+match;
-  return {p:Math.max(15,Math.min(85,raw)),raw,strength,match,pairs};
+const net=(a,b)=>edgeOf(a,b)-edgeOf(b,a);
+
+// ---------- золото и опыт: расчёт ----------
+const poolOf=lane=>LANES[lane].order;
+const MECH=1.0, UNSURE=0.5;  // бонус контрпику по механике и штраф за матчап без статистики
+function scoreVs(lane,c,e){
+  const base=wrOf(c)-50, meas=net(c,e);
+  const pe=LANES[lane].E[e].p.find(p=>p[0]===c);
+  const mech=pe&&pe[1]==null&&pe[3]!=="wr"?MECH:0;
+  const unc=!meas&&!mech?UNSURE:0;
+  return {id:c,base,meas,mech,unc,pe,sc:base+meas+mech-unc,exp:wrOf(c)+meas};
 }
-function teamRow(side,label){
-  const T=st.teams[side],on=st.tside===side;
-  const slots=[0,1,2,3,4].map(i=>T[i]?`<button class="slot full" type="button" data-rm="${side}:${T[i]}" aria-label="Убрать ${esc(H[T[i]][0])}">${ava(T[i])}<span>${esc(H[T[i]][0])}</span></button>`
-    :`<button class="slot" type="button" data-tside="${side}" aria-label="Добавить героя в команду ${label}">+</button>`).join("");
-  return `<div class="team ${side}${on?" on":""}"><button class="tlabel" type="button" data-tside="${side}" aria-pressed="${on}">${label} <small>${T.length}/5</small></button><div class="slots">${slots}</div></div>`;
+function rankVs(lane,e){
+  return poolOf(lane).filter(c=>c!==e&&!st.ban.has(c)).map(c=>scoreVs(lane,c,e)).sort((a,b)=>b.sc-a.sc);
 }
-function drawTeams(){
-  $("#teams").innerHTML=teamRow("us","Мы")+teamRow("them","Враг")+
-    `<div class="selrow"><span>Добавляем в: <b>${st.tside==="us"?"нашу команду":"команду врага"}</b></span>${st.teams.us.length+st.teams.them.length?`<button class="link" type="button" data-tclear="1">Очистить</button>`:""}</div>`;
-  const q=$("#q3").value.trim().toLowerCase();
-  const ids=ALL_IDS.filter(id=>!q||matches(id,q));
-  $("#grid3").innerHTML=ids.length?ids.map(id=>{const inUs=st.teams.us.includes(id),inThem=st.teams.them.includes(id);
-    return `<button class="chip${inUs?" inus":inThem?" inthem":""}" type="button" data-pid="${id}" aria-pressed="${inUs||inThem}">${ava(id)}<span>${esc(H[id][0])}<small>${inUs?"у нас":inThem?"у врага":esc(H[id][1])}</small></span></button>`;}).join("")
-    :`<span class="empty">Такого героя нет. Попробуй другое написание.</span>`;
+// самый сильный ещё не забаненный контрпик с той же линии: враг может взять его позже
+function riskOf(lane,c){
+  let best=null;
+  for(const x of poolOf(lane)){ if(x===c||st.ban.has(x)) continue; const n=net(x,c); if(n>0&&(!best||n>best[1])) best=[x,n]; }
+  return best;
 }
-function drawPred(){
-  const A=st.teams.us,B=st.teams.them;
-  if(!A.length||!B.length){
-    $("#result").innerHTML=`<h2>Прогноз победы</h2><p class="why">Добавь хотя бы по одному герою в обе команды. Точнее всего прогноз, когда известны все 10.</p>`;
-    return;
-  }
-  const r=predict(A,B), pct=Math.round(r.p);
-  const good=r.pairs.filter(x=>x[2]>0).sort((a,b)=>b[2]-a[2]).slice(0,5);
-  const bad=r.pairs.filter(x=>x[2]<0).sort((a,b)=>a[2]-b[2]).slice(0,5);
-  const full=A.length===5&&B.length===5;
-  const line=([a,b,n])=>`<li class="${n>0?"up":"dn"}"><b>${sgn(n)}</b><span>${esc(H[a][0])} против ${esc(H[b][0])}</span></li>`;
-  $("#result").innerHTML=`
-    <h2>Прогноз победы</h2>
-    <div class="verdict"><span class="name">${pct}%</span><span class="tag ${pct>=55?"m":pct<=45?"k":"w"}">${pct>=55?"мы в плюсе":pct<=45?"враг в плюсе":"примерно равно"}</span></div>
-    <div class="bar" role="img" aria-label="Шанс нашей команды ${pct} процентов"><span style="width:${pct}%"></span></div>
-    <div class="barlbl"><span>Мы ${pct}%</span><span>Враг ${100-pct}%</span></div>
-    ${full?"":`<p class="note">Известно героев: ${A.length+B.length} из 10. Прогноз уточнится, когда добавишь остальных.</p>`}
-    <div><h2 class="sp">Из чего сложился прогноз</h2><ul class="pm">
-      <li class="${r.strength>=0?"up":"dn"}"><b>${sgn(r.strength)}</b><span>Сила героев: средний винрейт на Мифической чести</span></li>
-      <li class="${r.match>=0?"up":"dn"}"><b>${sgn(r.match)}</b><span>Матчапы: кто кого контрит между командами (${r.pairs.length} пар со статистикой)</span></li>
-      ${r.raw!==r.p?`<li class="dn"><b>·</b><span>Итог ограничен диапазоном 15–85%: точнее данные не позволяют</span></li>`:""}
-    </ul></div>
-    ${good.length?`<div><h2 class="sp">Наши выигрышные матчапы</h2><ul class="pm">${good.map(line).join("")}</ul></div>`:""}
-    ${bad.length?`<div><h2 class="sp">Где враг сильнее</h2><ul class="pm">${bad.map(line).join("")}</ul></div>`:""}
-    <p class="note">Это оценка по статистике героев, а не гарантия. Она не учитывает навык игроков, их ранг и то, как команда играет вместе.</p>`;
-}
-// ---------- Пик роума: под весь драфт ----------
-const S=a=>new Set(a.split(" "));
-const TANK=S("tigreal franco akai johnson grock khufra atlas belerick baxia hylos gatotkaca minotaur lolita uranus barats edith gloo fredrinn hilda carmilla");
-const HEAL=S("rafaela estes floryn angela minotaur kalea");
-const DASH=S("ling fanny lancelot hayabusa gusion benedetta harith wanwan chou joy suyou hirara aamon alucard paquito julian nolan lukas sora arlott khaleed freya cici kadita claude granger kagura");
-const ASSN=S("ling fanny lancelot hayabusa gusion helcurt natalia saber aamon hirara suyou joy karina benedetta kadita harley nolan yin");
-const MMR=S("layla miya hanabi granger clint beatrix brody bruno lesley irithel karrie kimmy moskov natan obsidia popol wanwan ixia melissa claude yisunshin");
-const CCH=S("tigreal atlas franco kaja khufra minsitthar chou jawhead lolita johnson grock akai minotaur vale aurora eudora valir kagura carmilla marcel kalea gatotkaca edith terizla silvanna saber ruby badang belerick");
-const HEALE=S("estes floryn rafaela angela alucard uranus esmeralda alice yuzhong");
-const STILL=S("layla miya hanabi xavier gord cyclops novaria yve zhask vexana eudora aurora valir vale odette change ixia obsidia melissa kimmy");
-const PICKER=S("franco kaja marcel atlas khufra tigreal");
-const ANTIDASH=S("khufra kaja");
-const PROTECT=S("angela diggie khufra kaja rafaela");
-st.rside="them";
-const DRAFT_LANES=new Set(["roam","mid"]);
-const ESC=S("kagura harith valir lylia harley kadita zetian luoyi");
-const CCMID=S("vale aurora eudora nana valir vexana kadita zhuxin");
-const LONG=S("xavier gord yve pharsa novaria");
-const TANKKILL=S("lunox cecilion yve gord valentina");
-const LANE_OPP={mid:new Set([...BL.mid.map(c=>c.id),...Object.keys(LANES.mid.E)])};
-function roamRank(){
-  const lane=st.lane, opp=LANE_OPP[lane];
-  const us=st.teams.us, them=st.teams.them, taken=new Set([...us,...them,...st.ban]);
-  const left=5-them.length;                       // сколько врагов ещё не выбрано
-  const cnt=(set,T)=>T.filter(x=>set.has(x)).length;
-  const need=[];
-  if(lane==="roam"&&us.length>=2&&!cnt(TANK,us)) need.push(["tank",1.5,"У вас нет танка: закрывает переднюю линию"]);
-  if(lane==="roam"&&us.length>=2&&!cnt(HEAL,us)) need.push(["heal",0.8,"У вас нет лечения"]);
-  const dash=cnt(DASH,them), assn=cnt(ASSN,them), mm=cnt(MMR,them), cc=cnt(CCH,them), still=cnt(STILL,them);
-  const tanks=cnt(TANK,them), usCC=cnt(CCH,us);
-  return BL[lane].map(c=>c.id).filter(id=>!taken.has(id)).map(id=>{
-    let sc=wrOf(id)-50; const up=[], dn=[];
-    if(sc>0.5) up.push([sc,"Сильный в патче: винрейт "+num(wrOf(id))+"% на Мифической чести"]);
-    else if(sc<-0.5) dn.push([sc,"Слабый в патче: винрейт "+num(wrOf(id))+"%"]);
-    for(const e of them){const lo=opp&&opp.has(e), n=(edgeOf(id,e)-edgeOf(e,id))*(lo?1.5:1);
-      if(Math.abs(n)>=0.5){sc+=n;(n>0?up:dn).push([n,(n>0?"Выигрывает против ":"Проигрывает против ")+H[e][0]+(lo?" (соперник по линии)":"")]);}}
-    if(left>0){ // кто из ещё доступных героев контрит его
-      let best=null; for(const x in MX){ if(taken.has(x)) continue; const e=edgeOf(x,id); if(e>0&&(!best||e>best[1])) best=[x,e]; }
-      if(best){const r=best[1]*left/5; sc-=r; dn.push([-r,"Риск контрпика: враг ещё может взять "+H[best[0]][0]]);}
-    }
-    for(const [k,v,t] of need) if((k==="tank"&&TANK.has(id))||(k==="heal"&&HEAL.has(id))){sc+=v;up.push([v,t]);}
-    const tag=(c,set,min,v,t)=>{if(c>=min&&set.has(id)){sc+=v;up.push([v,t]);}};
-    if(lane==="mid"){
-    tag(assn,ESC,1,1.0,"У врага убийца: есть чем уйти от его захода");
-    tag(dash,CCMID,2,1.0,"У врага "+dash+" героя с рывками: контроль ловит их");
-    tag(still,LONG,2,0.8,"У врага "+still+" малоподвижных героя: бьёт их с дальней дистанции");
-    tag(tanks,TANKKILL,2,0.8,"У врага "+tanks+" танка: долгий урон пробивает их");
-    if(us.length>=2&&usCC===0&&CCMID.has(id)){sc+=1.0;up.push([1.0,"У вас мало контроля: добавит его команде"]);}
-    } else {
-    tag(dash,ANTIDASH,2,1.5,"У врага "+dash+" героя с рывками: ломает их");
-    tag(assn,PROTECT,1,1.0,"У врага убийца: защищает вашего стрелка и мага");
-    tag(mm,S("lolita"),2,1.0,"У врага "+mm+" стрелка: щит блокирует их выстрелы");
-    tag(cc,S("diggie"),3,1.5,"У врага много контроля: ульт снимает его со всей команды");
-    tag(still,PICKER,2,1.0,"У врага "+still+" малоподвижных героя: ловит их");
-    }
-    return {id,sc,up:up.sort((a,b)=>b[0]-a[0]),dn:dn.sort((a,b)=>a[0]-b[0])};
+function rankBlind(lane){
+  return poolOf(lane).filter(c=>!st.ban.has(c)).map(c=>{
+    const base=wrOf(c)-50, risk=riskOf(lane,c);
+    return {id:c,base,risk,sc:base-(risk?risk[1]:0)};
   }).sort((a,b)=>b.sc-a.sc);
 }
-function rteamRow(side,label,max){
-  const T=side==="ban"?[...st.ban]:st.teams[side], on=st.rside===side;
-  const full=T.map(id=>`<button class="slot full" type="button" data-rrm="${side}:${id}" aria-label="Убрать ${esc(H[id][0])}">${ava(id)}<span>${esc(H[id][0])}</span></button>`).join("");
-  const free=T.length<max?`<button class="slot" type="button" data-rside="${side}" aria-label="Добавить: ${label}">+</button>`:"";
-  return `<div class="team ${side==="ban"?"them":side}${on?" on":""}"><button class="tlabel" type="button" data-rside="${side}" aria-pressed="${on}">${label} <small>${T.length}/${max}</small></button><div class="slots">${full}${free}</div></div>`;
+// план по стадиям: сравниваем, в какой стадии сильнее каждый из двух героев
+function phasePlan(lane,c,e){
+  const pc=LANES[lane].E[c].ph, pe=LANES[lane].E[e].ph;
+  const d0=pc[0]-pe[0], d1=pc[1]-pe[1], d2=pc[2]-pe[2];
+  const early=d0>0?"Ты сильнее в начале: дави линию и бери размены до 10-й минуты."
+    :d0<0?"Он сильнее в начале: фарми у башни и не меняйся до 10-й минуты."
+    :"Начало ровное: решают размены и уход от его главного умения.";
+  const late=d2>0?"После 16-й минуты ты сильнее: если отстаёшь, тяни игру."
+    :d2<0?"После 16-й минуты он сильнее: набери преимущество раньше и дави башни."
+    :d1>0?"С 10-й по 16-ю минуту твоё окно силы: ищи драки за черепаху и лорда."
+    :d1<0?"С 10-й по 16-ю минуту он сильнее: в это время не дерись без команды."
+    :"Дальше всё решают предметы и драки за объекты.";
+  return {early,late};
 }
-st.first=true; st.banDone=false; st.meDone=false; st.manual=null; st.rhist=[];
-function autoSide(){
-  if(st.manual) return st.manual;
-  if(!st.banDone&&st.ban.size<10) return "ban";
-  const T=st.teams, idx=T.us.length+T.them.length+(st.meDone?1:0);
-  if(idx>=10) return null;
-  let ours=(SEQ[idx][0]==="A")===st.first;
-  if(!ours&&T.them.length>=5) ours=true;
-  if(ours&&T.us.length>=4&&!st.meDone) return "me";
-  if(ours&&T.us.length>=4) return T.them.length<5?"them":null;
-  return ours?"us":"them";
+function planBlock(lane,c,e){
+  const mu=MU[lane+":"+e+":"+c], ph=phasePlan(lane,c,e), pv=PROF[e]||{}, pc=PROF[c]||{};
+  const row=(k,t)=>t?`<li><b>${k}.</b> ${esc(t)}</li>`:"";
+  const buy=(mu&&mu.b)||pv.buy;
+  return `<div class="mu"><h2 class="sp">План на матчап «${esc(H[c][0])} — ${esc(H[e][0])}»</h2><ul class="plain">
+    ${row("Начало",(mu&&mu.e)||ph.early)}${row("Дальше",(mu&&mu.l)||ph.late)}${row("Не делай",mu&&mu.x)}
+    ${mu?"":row("Против соперника",pv.vs)}${row("Докупи",buy)}</ul></div>
+    ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p></div>`:""}`;
 }
-const POPSORT=Object.keys(MH).sort((a,b)=>(POP[b]||0)-(POP[a]||0));
-function drawRTeams(){
-  const side=autoSide(), T=st.teams, n=T.us.length+T.them.length+(st.meDone?1:0)+1;
-  st.rside=side==="me"?"us":(side||"them");
-  const btn=(attr,txt,cls="link")=>`<button class="${cls}" type="button" ${attr}>${txt}</button>`;
-  const step = side==="ban" ? [`Баны: нажимай забаненных героев (${st.ban.size}/10)`, btn('data-rbandone="1"',"Баны всё →","go")]
-    : side==="them" ? [`Пик ${n} из 10 — <b class="tthem">ход врага</b>: нажми, кого он взял`, ""]
-    : side==="us" ? [`Пик ${n} из 10 — <b class="tus">ход вашей команды</b>: нажми союзника`, st.meDone?"":btn('data-rme="1"',"Это мой пик →","go")]
-    : side==="me" ? [`Пик ${n} из 10 — <b class="tus">твой ход!</b> Смотри рекомендацию ниже`, btn('data-rme="1"',"Я взял →","go")]
-    : ["Драфт заполнен", ""];
-  const top=side?roamRank().slice(0,3).map((x,i)=>`<button type="button" class="tp" data-rtop="${i}">${esc(H[x.id][0])}</button>`).join(", "):"";
-  const any=st.rhist.length||T.us.length||T.them.length||st.ban.size;
-  $("#teams").innerHTML=
-    `<div class="order"><span>Наша команда пикает</span><div class="mini">`+
-      `<button type="button" data-rfirst="1" aria-pressed="${st.first}">первой</button><button type="button" data-rfirst="0" aria-pressed="${!st.first}">второй</button></div></div>`+
-    `<div class="step"><p>${step[0]}</p>${top?`<p class="top3">Лучшие ${st.lane==="mid"?"маги на мид":"роумеры"} сейчас: ${top}</p>`:""}<div class="stepbtns">${step[1]}${any?btn('data-rundo="1"',"Отменить")+btn('data-rclear="1"',"Сначала"):""}</div></div>`+
-    [["ban","Баны"],["us","Союзники"],["them","Враги"]].map(([k,l])=>{const L=k==="ban"?[...st.ban]:T[k]; return L.length?
-      `<div class="strip ${k}"><span class="sl">${l}</span>${L.map(id=>`<button type="button" class="sa" data-rrm="${k}:${id}" title="Убрать ${esc(H[id][0])}">${ava(id)}</button>`).join("")}</div>`:"";}).join("");
-  const q=$("#q3").value.trim().toLowerCase();
-  const ids=(q?ALL_IDS:POPSORT).filter(id=>q?matches(id,q):!(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)));
-  $("#grid3").innerHTML=ids.length?ids.map(id=>{const u=T.us.includes(id),t=T.them.includes(id),b=st.ban.has(id);
-    return `<button class="chip${u?" inus":t?" inthem":b?" inban":""}" type="button" data-rpid="${id}" aria-pressed="${u||t||b}">${ava(id)}<span>${esc(H[id][0])}<small>${u?"союзник":t?"враг":b?"в бане":esc(H[id][1])}</small></span></button>`;}).join("")
-    :`<span class="empty">Такого героя нет. Попробуй другое написание.</span>`;
+function altsBlock(list,label,fmtv){
+  return `<div><h2 class="sp">${label}</h2><div class="alts">${list.map((x,i)=>
+    `<button class="alt" type="button" data-i="${i}" aria-pressed="${i===st.pick}">${ava(x.id)}${esc(H[x.id][0])}<span class="e">${fmtv(x)}</span></button>`).join("")}</div></div>`;
+}
+const expTxt=x=>x.meas?"≈"+num(x.exp)+"%":x.mech?"мех.":num(wrOf(x.id))+"%";
+
+function drawGrid(){
+  const lane=laneOf(), q=$("#q").value.trim().toLowerCase(), sel=st.enemy[lane];
+  const ids=poolOf(lane).slice().sort((a,b)=>popOf(b)-popOf(a)).filter(id=>!q||matches(id,q));
+  $("#grid").innerHTML=ids.map(id=>{const bn=st.ban.has(id);
+    return `<button class="chip${bn?" banned":""}" type="button" data-id="${id}" aria-pressed="${id===sel}">${ava(id)}<span>${esc(H[id][0])}${bn?"<small>в бане</small>":""}</span></button>`;}).join("");
+  const em=$("#empty");
+  if(!ids.length){
+    const other=TABS.filter(t=>t!==lane&&LANES[t]).flatMap(t=>poolOf(t).filter(id=>matches(id,q)).map(id=>[t,id]));
+    em.hidden=false;
+    em.innerHTML=other.length?`<span>На этой линии такого героя нет. Он есть здесь:</span><div class="alts">${other.slice(0,6).map(([t,id])=>
+      `<button class="alt" type="button" data-golane="${t}" data-id="${id}">${ava(id)}${esc(H[id][0])}<span class="e">${LANE_NAME[t]}</span></button>`).join("")}</div>`
+      :"Такого героя нет. Попробуй другое написание.";
+  }else em.hidden=true;
+  $("#unknownRow").innerHTML=sel?`<span>Соперник: <b>${esc(H[sel][0])}</b></span><button class="link" type="button" id="unk">Не знаю соперника</button>`
+    :`<span>Соперник не выбран — показан лучший слепой пик.</span>`;
+}
+
+function drawVs(lane,e){
+  const d=LANES[lane].E[e], r=rankVs(lane,e);
+  if(!r.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все герои линии в бане.</p>`;return;}
+  if(st.pick>=Math.min(r.length,8)) st.pick=0;
+  const x=r[st.pick], c=x.id, mu=MU[lane+":"+e+":"+c];
+  const why=(mu&&mu.w)||(x.pe&&x.pe[2])||(x.meas>0?"Статистически выигрывает этот матчап и силён в патче.":x.meas<0?"Силён в патче, хотя по статистике этот матчап ему неудобен.":"Сильный герой патча. Прямой статистики по этому матчапу нет.");
+  const lines=[[x.base,`Сила в патче: винрейт ${num(wrOf(c))}% на Мифической чести`]];
+  if(x.meas) lines.push([x.meas,"Матчап с этим соперником по статистике"]);
+  if(x.mech) lines.push([x.mech,"Контрпик по механике умений (статистики нет)"]);
+  if(x.unc) lines.push([-x.unc,"Нет статистики по этому матчапу: оценка менее надёжна"]);
+  const tag=x.meas?`<span class="tag m">≈${num(x.exp)}% побед</span>`:x.mech?`<span class="tag k">по механике</span>`:`<span class="tag k">сила в патче</span>`;
+  const flat=d.ph.every(v=>v===0);
+  // прямой контрпик: самое большое преимущество именно против этого врага (статистика или механика)
+  const ci=r.reduce((bi,y,i)=>{const v=y.meas+y.mech, bv=bi<0?0:r[bi].meas+r[bi].mech; return v>bv?i:bi;},-1);
+  const cc=ci>=0&&ci!==st.pick?r[ci]:null;
+  const counterCard=cc?`<div class="next"><span>Прямой контрпик:</span> <b>${esc(H[cc.id][0])}</b> — ${cc.meas?`${fmt(cc.meas)} в этом матчапе, ≈${num(cc.exp)}% побед`:"контрит по механике умений"}${banOf(cc.id)>=20?`, банят в ${Math.round(banOf(cc.id))}%`:""}. <button class="link" type="button" data-i="${ci}">Показать его</button></div>`:"";
+  $("#result").innerHTML=`${bannedLine()}
+    <div class="versus">Против: <b>${esc(H[e][0])}</b>${st.ban.has(e)?` <span class="tag k">в бане</span>`:""}</div>
+    <div class="verdict">${ava(c,true)}<span class="name">Бери: ${esc(H[c][0])}</span>${tag}</div>
+    <p class="why">${esc(why)}</p>
+    <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.map(pmLine).join("")}</ul></div>
+    ${counterCard}
+    ${banWarn(c)}${banButton(c)}
+    ${planBlock(lane,c,e)}
+    ${altsBlock(r.slice(0,8),"Другие варианты",expTxt)}
+    ${buildBlock(c,lane)}
+    <div><h2 class="sp">Когда соперник опасен</h2>
+      ${flat?`<p class="note">Заметной разницы между стадиями игры нет.</p>`:`<div class="phase">${phaseBox(d.ph[0],"Начало","0–10 мин")}${phaseBox(d.ph[1],"Середина","10–16 мин")}${phaseBox(d.ph[2],"Поздняя","16+ мин")}</div>`}</div>
+    <div><h2 class="sp">Как играть против соперника</h2><ul class="plain">${d.tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></div>
+    ${d.t.length?`<div><h2 class="sp">Попроси у команды</h2><div class="rows">${d.t.map(y=>`<span class="pill">${esc(y[0])}<i>${fmt(y[1])}</i></span>`).join("")}</div></div>`:""}
+    ${d.a.length?`<div><h2 class="sp">Не бери против соперника</h2><div class="rows">${d.a.map(y=>`<span class="pill bad">${esc(y[0])}<i>−${num(y[1])}</i></span>`).join("")}</div></div>`:""}`;
+}
+
+function drawBlind(lane){
+  const r=rankBlind(lane);
+  if(!r.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все герои линии в бане.</p>`;return;}
+  if(st.pick>=Math.min(r.length,8)) st.pick=0;
+  const x=r[st.pick], c=x.id, pc=PROF[c]||{};
+  const lines=[[x.base,`Сила в патче: винрейт ${num(wrOf(c))}% на Мифической чести`]];
+  if(x.risk) lines.push([-x.risk[1],`Риск: на линии его контрит ${H[x.risk[0]][0]}, враг может взять его позже`]);
+  const why=x.risk?`Если соперник уже открыт и это не ${H[x.risk[0]][0]}, или ${H[x.risk[0]][0]} в бане, риска нет.`
+    :"Измеренных контрпиков на линии у него не осталось: можно брать, не видя соперника.";
+  const cnt=poolOf(lane).filter(y=>y!==c&&net(y,c)>0).sort((a,b)=>net(b,c)-net(a,c)).slice(0,5);
+  $("#result").innerHTML=`${bannedLine()}
+    <div class="versus">Слепой пик на <b>${lane==="gold"?"линию золота":"линию опыта"}</b></div>
+    <div class="verdict">${ava(c,true)}<span class="name">Бери: ${esc(H[c][0])}</span><span class="tag ${x.sc>=0?"m":"k"}">оценка ${sgn(x.sc)}</span></div>
+    <p class="why">${esc(why)}</p>
+    <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.map(pmLine).join("")}</ul></div>
+    ${banWarn(c)}${banButton(c)}
+    ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p></div>`:""}
+    ${cnt.length?`<div><h2 class="sp">Кого опасаться на линии</h2><div class="rows">${cnt.map(y=>`<span class="pill bad">${esc(H[y][0])}<i>−${num(net(y,c))}</i></span>`).join("")}</div></div>`:""}
+    ${altsBlock(r.slice(0,8),"Рейтинг для слепого пика",y=>sgn(y.sc))}
+    ${buildBlock(c,lane)}
+    <p class="note">Как только увидишь соперника по линии, выбери его в списке выше: совет станет точнее.</p>`;
+}
+
+// ---------- роум: метовые герои + ситуация ----------
+const ROAM_WR=0.5;  // все восемь и так метовые: половина разницы винрейта, чтобы ситуация решала
+const CHIP_TXT={};ROAM_CHIPS.forEach(([k,t])=>CHIP_TXT[k]=t);
+function roamRank(){
+  const meta=ROAM_META.filter(m=>!st.ban.has(m.id)).map(m=>{
+    const base=(wrOf(m.id)-50)*ROAM_WR, up=[[base,`Сила в патче: винрейт ${num(wrOf(m.id))}% на Мифической чести`]];
+    let sc=base;
+    for(const k of st.chips){const v=m.tags[k]; if(v){sc+=v;up.push([v,CHIP_TXT[k]]);}}
+    return {m,id:m.id,sc,up};
+  }).sort((a,b)=>b.sc-a.sc);
+  if(meta.length) return meta;
+  // все метовые в бане: берём следующих по силе из всех роумеров
+  return BL.roam.map(c=>c.id).filter(id=>!st.ban.has(id)&&!ROAM_META.some(m=>m.id===id))
+    .map(id=>({m:null,id,sc:wrOf(id)-50,up:[[wrOf(id)-50,`Сила в патче: винрейт ${num(wrOf(id))}% на Мифической чести`]]})).sort((a,b)=>b.sc-a.sc);
+}
+function drawChips(){
+  $("#chips").innerHTML=ROAM_CHIPS.map(([k,t])=>`<button class="tog" type="button" data-chip="${k}" aria-pressed="${st.chips.has(k)}">${esc(t)}</button>`).join("")+
+    (st.chips.size?`<button class="link" type="button" data-chipclear="1">Сбросить</button>`:"");
 }
 function drawRoam(){
-  const r=roamRank(), n=st.teams.them.length;
-  if(!r.length){$("#result").innerHTML=`<p class="why">Все кандидаты в бане или уже выбраны.</p>`;return;}
-  if(st.bpick>=Math.min(r.length,6)) st.bpick=0;
-  const stage=n===0?["Первый пик","Врагов ещё не видно. Берём сильного героя, которого трудно законтрить."]
-    :n>=4?["Последний пик","Видно почти весь вражеский состав. Подбираем роума против него."]
-    :["Середина драфта","Учитываем открытых врагов и риск контрпика в их оставшиеся пики."];
-  const c=r[st.bpick], id=c.id;
-  const line=([v,t])=>`<li class="${v>=0?"up":"dn"}"><b>${sgn(v)}</b><span>${esc(t)}</span></li>`;
-  const heals=st.teams.them.filter(x=>HEALE.has(x)).length;
-  const alts=r.slice(0,6).map((x,i)=>`<button class="alt" type="button" data-r="${i}" aria-pressed="${i===st.bpick}">${ava(x.id)}${esc(H[x.id][0])}<span class="e">${sgn(x.sc)}</span></button>`).join("");
-  const build=buildBlock(id);
-  $("#result").innerHTML=`
-    <p class="eyebrow">${esc(stage[0])}</p>
-    <div class="verdict">${ava(id,true)}<span class="name">Бери: ${esc(H[id][0])}</span></div>
-    <p class="why">${esc(stage[1])}</p>
-    <div><h2 class="sp">Почему он</h2><ul class="pm">${c.up.slice(0,5).map(line).join("")||`<li><b>·</b><span>Без явных плюсов: просто лучший из доступных.</span></li>`}</ul></div>
-    ${c.dn.length?`<div><h2 class="sp">Что против него</h2><ul class="pm">${c.dn.slice(0,3).map(line).join("")}</ul></div>`:""}
-    ${st.teams.them.map(e=>muBlock(MU[st.lane+":"+e+":"+id],id,H[e][0])).join("")}
-    ${heals>=2?`<p class="note">У врага ${heals} героя с сильным лечением: возьми «Господство льда».</p>`:""}
-    <div><h2 class="sp">Рейтинг ${st.lane==="mid"?"магов":"роумеров"}</h2><div class="alts">${alts}</div></div>
-    ${build}
-    <p class="note">Оценка = винрейт в патче − 50 + матчапы против отмеченных врагов (п.п., соперник по миду ×1,5) − риск контрпика + бонусы за нужды команды. Забанен или забран — просто пропадает из списка.</p>`;
+  const r=roamRank();
+  if(!r.length){$("#result").innerHTML=`${bannedLine()}<p class="why">Все роумеры в бане.</p>`;return;}
+  if(st.pick>=r.length) st.pick=0;
+  const x=r[st.pick], c=x.id, m=x.m;
+  const list=ROAM_META.map(mm=>{const on=st.ban.has(mm.id), idx=r.findIndex(y=>y.id===mm.id);
+    return `<li><button type="button" class="banrow" ${on?`data-unban="${mm.id}"`:`data-i="${idx}"`} aria-pressed="${on}">${ava(mm.id)}<span class="bn"><b>${esc(H[mm.id][0])}</b><small>винрейт ${num(wrOf(mm.id))}% · банят в ${Math.round(banOf(mm.id))}%</small></span><span class="mk">${on?"в бане":idx===st.pick?"выбран":"смотреть"}</span></button></li>`;}).join("");
+  $("#result").innerHTML=`${bannedLine()}
+    <div class="verdict">${ava(c,true)}<span class="name">Бери: ${esc(H[c][0])}</span><span class="tag m">${num(wrOf(c))}% побед</span></div>
+    ${m?`<p class="why">${esc(m.when)}</p>`:`<p class="why">Все метовые роумеры в бане: это следующий по силе в патче.</p>`}
+    <div><h2 class="sp">Почему он</h2><ul class="pm">${x.up.map(pmLine).join("")}</ul></div>
+    ${banWarn(c)}${banButton(c)}
+    ${m?`<div><h2 class="sp">Как играть</h2><p class="why">${esc(m.play)}</p></div>`:""}
+    ${buildBlock(c,"roam")}
+    <div><h2 class="sp">Метовые роумеры патча</h2><ul class="bans">${list}</ul></div>
+    <p class="note">Порядок: половина разницы винрейта с 50% плюс бонусы за отмеченную ситуацию. Забаненный герой выпадает из рекомендации.</p>`;
 }
-$("#pickPred").addEventListener("click",e=>{
-  if(view()!=="roampick") return;
-  const b=e.target.closest("button"); if(!b) return; const d=b.dataset, T=st.teams;
-  const redraw=()=>{st.bpick=0;drawRTeams();drawRoam();};
-  if(d.rtop!=null){st.bpick=+d.rtop;drawRoam();$("#result").scrollIntoView({behavior:"smooth",block:"start"});return;}
-  if(d.rfirst!=null){st.first=d.rfirst==="1";drawRTeams();return;}
-  if(d.rside){st.manual=d.rside;drawRTeams();return;}
-  if(d.rbandone){st.banDone=true;st.rhist.push({t:"bandone"});redraw();return;}
-  if(d.rme){st.meDone=true;st.rhist.push({t:"me"});redraw();return;}
-  if(d.rundo){const h=st.rhist.pop(); if(!h) return;
-    if(h.t==="bandone")st.banDone=false; else if(h.t==="me")st.meDone=false; else if(h.t==="ban")st.ban.delete(h.id); else T[h.t]=T[h.t].filter(x=>x!==h.id);
-    redraw();return;}
-  if(d.rclear){T.us=[];T.them=[];st.ban.clear();st.banDone=false;st.meDone=false;st.manual=null;st.rhist=[];redraw();return;}
-  const drop=id=>{T.us=T.us.filter(x=>x!==id);T.them=T.them.filter(x=>x!==id);st.ban.delete(id);st.rhist=st.rhist.filter(h=>h.id!==id);};
-  if(d.rrm){drop(d.rrm.split(":")[1]);redraw();return;}
-  if(d.rpid){const id=d.rpid;
-    if(T.us.includes(id)||T.them.includes(id)||st.ban.has(id)) drop(id);
-    else{let s=autoSide(); if(s==="me") s="us"; if(!s) return;
-      if(s==="ban"){if(st.ban.size>=10)return; st.ban.add(id);} else {if(T[s].length>=(s==="us"?4:5))return; T[s].push(id);}
-      st.rhist.push({t:s,id}); st.manual=null;}
-    $("#q3").value="";redraw();}
-});
-$("#q3").addEventListener("input",()=>{if(view()==="roampick")drawRTeams();});
 
+// ---------- баны ----------
+const threat=id=>(MH[id][0]-50)+MH[id][1]/20;
+function banGroup(id){
+  const [w,b]=MH[id];
+  if(w>=52&&b>=15) return ["сильный, его банят","m"];
+  if(w>=53.5&&b<15) return ["сильный, но редко банят","w"];
+  if(b>=25&&w<52) return ["банят часто, винрейт обычный","k"];
+  return null;
+}
+function drawBans(){
+  const list=Object.keys(MH).sort((a,b)=>threat(b)-threat(a)).slice(0,18);
+  const next=list.filter(id=>!st.ban.has(id)).slice(0,3);
+  const bq=($("#bq")&&$("#bq").value||"").trim().toLowerCase();
+  const found=bq?Object.keys(MH).filter(id=>matches(id,bq)).slice(0,10):[];
+  $("#result").innerHTML=`
+    <div><h2 class="sp">Кого банить на Мифической чести (25–49 звёзд)</h2>
+      <p class="note">Каждая команда банит 5 героев. Отмечать баны не обязательно: если отметишь, эти герои пропадут из советов на всех вкладках.</p></div>
+    <div class="next"><span>Следующий бан:</span> ${next.map(id=>`<b>${esc(H[id][0])}</b>`).join(", ")}</div>
+    <ul class="bans">${list.map(id=>{const g=banGroup(id),[w,b]=MH[id],on=st.ban.has(id);
+      return `<li><button type="button" class="banrow" data-ban="${id}" aria-pressed="${on}">${ava(id)}<span class="bn"><b>${esc(H[id][0])}</b><small>винрейт ${num(w)}% · банят в ${Math.round(b)}%</small></span>${g?`<span class="tag ${g[1]}">${g[0]}</span>`:""}<span class="mk">${on?"в бане":"бан"}</span></button></li>`;}).join("")}</ul>
+    <div><h2 class="sp">Отметить другого героя в бане</h2>
+      <input id="bq" type="search" placeholder="Имя героя" autocomplete="off" aria-label="Найти героя для бана" value="${esc(bq)}">
+      <div class="alts" id="bfound">${found.map(id=>`<button class="alt" type="button" data-ban="${id}" aria-pressed="${st.ban.has(id)}">${ava(id)}${esc(H[id][0])}<span class="e">${st.ban.has(id)?"в бане":"бан"}</span></button>`).join("")}</div></div>
+    ${st.ban.size?`<button class="link" type="button" data-reset="1">Новый матч: снять все баны</button>`:""}`;
+}
+
+// ---------- отрисовка и адрес ----------
 function setHash(){
-  const h=st.mode==="draft"?"draft":st.mode==="predict"?"predict":view()==="roampick"?st.lane+"-pick":st.lane+"-"+(st.mode==="blind"?"blind":st.enemy[st.lane]);
+  const lane=laneOf(), h=lane&&st.enemy[lane]?lane+"-"+st.enemy[lane]:st.tab;
   try{ if(location.hash!=="#"+h) history.replaceState(null,"","#"+h); }catch(e){ try{location.hash=h;}catch(_){} }
 }
-const view=()=>(DRAFT_LANES.has(st.lane)&&(st.mode==="known"||st.mode==="blind"))?"roampick":st.mode;
 function draw(scroll){
-  document.querySelectorAll("[data-lane]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lane===st.lane));
-  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===st.mode));
-  const m=view();
-  $("#laneTitle").textContent=m==="roampick"?(st.lane==="mid"?"мид под весь драфт":"роум под весь драфт"):(st.mode==="predict"||st.mode==="draft")?"по всем линиям":LANES[st.lane].title;
-  $("#pickKnown").hidden=m!=="known"; $("#pickBlind").hidden=m!=="blind"; $("#pickPred").hidden=m!=="predict"&&m!=="roampick"; $("#sitCard").hidden=m==="draft"||m==="predict"||m==="roampick";
-  $("#laneSeg").hidden=m==="predict"; document.querySelector('[aria-label="Режим"]').hidden=m==="roampick";
-  if(m==="blind"){drawPool();drawBlind();}else if(m==="known"){drawGrid();drawKnown();}else if(m==="predict"){drawTeams();drawPred();}else if(m==="roampick"){drawRTeams();drawRoam();}else{drawDraft();}
-  $("#sit").innerHTML=SIT[st.lane].map(([en,t])=>`<div>${ico(en)}<p><b>${esc(IT[en][0])}</b>${esc(t)}</p></div>`).join("");
+  document.querySelectorAll("[data-tab]").forEach(b=>{if(b.closest(".switches"))b.setAttribute("aria-pressed",b.dataset.tab===st.tab);});
+  $("#laneTitle").textContent=TITLE[st.tab];
+  const lane=laneOf();
+  $("#pickKnown").hidden=!lane; $("#pickRoam").hidden=st.tab!=="roam"; $("#sitCard").hidden=st.tab==="bans";
+  if(lane){drawGrid(); st.enemy[lane]?drawVs(lane,st.enemy[lane]):drawBlind(lane);}
+  else if(st.tab==="roam"){drawChips();drawRoam();}
+  else drawBans();
+  if(st.tab!=="bans") $("#sit").innerHTML=SIT[st.tab].map(([en,t])=>`<div>${ico(en)}<p><b>${esc(IT[en][0])}</b>${esc(t)}</p></div>`).join("");
   setHash();
   if(scroll){
     const smooth=!matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -435,62 +270,45 @@ function draw(scroll){
 }
 function fromHash(){
   const h=location.hash.slice(1); if(!h) return false;
-  if(h==="draft"){st.mode="draft";return true;}
-  if(h==="predict"){st.mode="predict";return true;}
-  if(h==="mid-pick"||h==="mid-blind"){st.lane="mid";if(st.mode!=="blind")st.mode="known";return true;}
-  if(h==="roampick"||h==="roam-pick"||h==="roam-blind"){st.lane="roam";if(st.mode!=="blind")st.mode="known";return true;}
-  if(EG[h]){st.lane="gold";st.mode="known";st.enemy.gold=h;return true;}
+  if(h==="bans"||h==="draft"){st.tab="bans";return true;}
+  if(h==="roam"||h.startsWith("roam-")){st.tab="roam";return true;}
+  if(h==="gold"||h==="exp"){st.tab=h;return true;}
+  if(EG[h]){st.tab="gold";st.enemy.gold=h;return true;}
   const i=h.indexOf("-"); if(i<0) return false;
   const lane=h.slice(0,i), rest=h.slice(i+1);
-  if(!LANES[lane]) return false;
-  if(rest==="blind"){st.lane=lane;st.mode="blind";return true;}
-  if(LANES[lane].E[rest]){st.lane=lane;st.mode="known";st.enemy[lane]=rest;return true;}
-  return false;
+  if(lane!=="gold"&&lane!=="exp"){st.tab="gold";return true;}   // старые ссылки на мид и лес
+  st.tab=lane; st.enemy[lane]=LANES[lane].E[rest]?rest:null; return true;
 }
 
 document.querySelector(".switches").addEventListener("click",e=>{
-  const b=e.target.closest("button"); if(!b) return;
-  if(b.dataset.lane){st.lane=b.dataset.lane;if(DRAFT_LANES.has(st.lane)&&st.mode!=="blind")st.mode="known";st.pick=0;st.bpick=0;$("#q").value="";$("#q2").value="";}
-  if(b.dataset.mode){st.mode=b.dataset.mode;}
-  draw(false);
+  const b=e.target.closest("[data-tab]"); if(!b) return;
+  st.tab=b.dataset.tab; st.pick=0; $("#q").value=""; draw(false);
 });
-$("#grid").addEventListener("click",e=>{const b=e.target.closest(".chip"); if(b){st.enemy[st.lane]=b.dataset.id;st.pick=0;draw(true);}});
+$("#grid").addEventListener("click",e=>{const b=e.target.closest(".chip"); if(!b) return;
+  const lane=laneOf(), id=b.dataset.id; st.enemy[lane]=st.enemy[lane]===id?null:id; st.pick=0; $("#q").value=""; draw(true);});
+$("#unknownRow").addEventListener("click",e=>{if(e.target.id==="unk"){st.enemy[laneOf()]=null;st.pick=0;draw(false);}});
 $("#empty").addEventListener("click",e=>{const b=e.target.closest("[data-golane]"); if(!b) return;
-  st.lane=b.dataset.golane;st.mode="known";st.enemy[st.lane]=b.dataset.id;st.pick=0;$("#q").value="";draw(true);});
-$("#pool").addEventListener("click",e=>{const b=e.target.closest(".tog"); if(!b) return;
-  const s=st.sel[st.lane], n=b.dataset.n; s.has(n)?s.delete(n):s.add(n); st.bpick=0; drawPool(); drawBlind();});
-$("#selrow").addEventListener("click",e=>{if(e.target.id==="clr"){st.sel[st.lane].clear();st.bpick=0;drawPool();drawBlind();}});
+  st.tab=b.dataset.golane; st.enemy[st.tab]=b.dataset.id; st.pick=0; $("#q").value=""; draw(true);});
+$("#pickRoam").addEventListener("click",e=>{const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.chipclear){st.chips.clear();}
+  else if(b.dataset.chip){const k=b.dataset.chip; st.chips.has(k)?st.chips.delete(k):st.chips.add(k);}
+  else return;
+  st.pick=0; drawChips(); drawRoam();});
 $("#result").addEventListener("click",e=>{
   const a=e.target.closest("button"); if(!a) return;
   const d=a.dataset;
-  if(d.i!=null){st.pick=+d.i;drawKnown();return;}
-  if(d.b!=null){st.bpick=+d.b;drawBlind();return;}
-  if(d.r!=null){st.bpick=+d.r;drawRoam();return;}
-  if(d.side){st.side=d.side;drawDraft();return;}
-  if(d.slot){st.slot=+d.slot;drawDraft();return;}
-  if(d.ban){st.ban.has(d.ban)?st.ban.delete(d.ban):st.ban.add(d.ban);st.pick=0;st.bpick=0;drawDraft();return;}
-  if(d.reset){st.ban.clear();for(const l in st.sel)st.sel[l].clear();st.pick=0;st.bpick=0;if($("#bq"))$("#bq").value="";drawDraft();return;}
-  if(d.go){st.mode=d.go;draw(true);}
+  if(d.i!=null){st.pick=+d.i;draw(false);return;}
+  if(d.banpick){st.ban.add(d.banpick);st.pick=0;draw(false);return;}
+  if(d.unban){st.ban.delete(d.unban);draw(false);return;}
+  if(d.ban){st.ban.has(d.ban)?st.ban.delete(d.ban):st.ban.add(d.ban);st.pick=0;drawBans();return;}
+  if(d.reset){st.ban.clear();st.pick=0;if($("#bq"))$("#bq").value="";drawBans();return;}
+  if(d.tab){st.tab=d.tab;st.pick=0;draw(true);}
 });
 $("#result").addEventListener("input",e=>{
   if(e.target.id!=="bq") return;
-  const pos=e.target.selectionStart; drawDraft();
+  const pos=e.target.selectionStart; drawBans();
   const q=$("#bq"); if(q){q.focus(); try{q.setSelectionRange(pos,pos);}catch(_){}}
 });
 $("#q").addEventListener("input",drawGrid);
-$("#q2").addEventListener("input",drawPool);
-$("#q3").addEventListener("input",()=>{if(view()==="predict")drawTeams();});
-$("#pickPred").addEventListener("click",e=>{
-  if(view()!=="predict") return;
-  const b=e.target.closest("button"); if(!b) return; const d=b.dataset;
-  if(d.tside){st.tside=d.tside;drawTeams();return;}
-  if(d.tclear){st.teams.us=[];st.teams.them=[];st.tside="us";drawTeams();drawPred();return;}
-  if(d.rm){const [side,id]=d.rm.split(":");st.teams[side]=st.teams[side].filter(x=>x!==id);st.tside=side;drawTeams();drawPred();return;}
-  if(d.pid){const id=d.pid,T=st.teams;
-    if(T.us.includes(id)||T.them.includes(id)){T.us=T.us.filter(x=>x!==id);T.them=T.them.filter(x=>x!==id);}
-    else{let side=st.tside;if(T[side].length>=5)side=side==="us"?"them":"us";if(T[side].length>=5)return;T[side].push(id);
-      if(T[side].length>=5&&T[side==="us"?"them":"us"].length<5)st.tside=side==="us"?"them":"us";}
-    $("#q3").value="";drawTeams();drawPred();}
-});
 addEventListener("hashchange",()=>{if(fromHash()){st.pick=0;draw(false);}});
 fromHash(); draw(false);
