@@ -29,9 +29,9 @@ _sp=_iu.spec_from_file_location('matchups',os.path.join(os.path.dirname(os.path.
 MU_JS = 'const MU=' + json.dumps(_m.MU, ensure_ascii=False) + ';\n'
 _sp2=_iu.spec_from_file_location('profiles',os.path.join(os.path.dirname(os.path.abspath(__file__)),'profiles.py')); _p=_iu.module_from_spec(_sp2); _sp2.loader.exec_module(_p)
 J=lambda o: json.dumps(o, ensure_ascii=False)
-PROF_JS = ('const PROF=%s;\nconst ROAM_META=%s;\nconst ROAM_CHIPS=%s;\nObject.assign(IT,%s);\nObject.assign(SP,%s);\n'
+PROF_JS = ('const PROF=%s;\nconst COMBO=%s;\nconst ROAM_META=%s;\nconst ROAM_CHIPS=%s;\nObject.assign(IT,%s);\nObject.assign(SP,%s);\n'
            'for(const [k,v] of Object.entries(%s))B[k]={i:v[0],s:v[1],n:v[2]};\n') % (
-    J(_p.PROF), J(_p.ROAM_META), J(_p.ROAM_CHIPS), J(_p.ITEM_ADD), J(_p.SPELL_ADD), J(_p.BUILD_FIX))
+    J(_p.PROF), J(_p.COMBO), J(_p.ROAM_META), J(_p.ROAM_CHIPS), J(_p.ITEM_ADD), J(_p.SPELL_ADD), J(_p.BUILD_FIX))
 s = s[:i] + MU_JS + PROF_JS + open('runtime.js', encoding='utf8').read() + s[j:]
 
 # markup
@@ -107,6 +107,7 @@ rep('<title>Контрпики MLBB по всем линиям</title>', '<title
 css = '''
 .mu{margin:10px 0 4px}
 #unknownRow{margin:0 0 8px}
+.combo{margin:6px 0 0}.combo li{margin:4px 0}.combo b{font-weight:600}
 #grid{grid-template-columns:repeat(3,1fr);gap:6px}
 #grid .chip{padding:6px;gap:6px;font-size:13px;min-height:40px}
 #grid .chip .ava{width:26px;height:26px;font-size:10px}

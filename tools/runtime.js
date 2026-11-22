@@ -38,6 +38,12 @@ function phaseBox(v,label,time){
   const txt=v>0?"сильный":v<0?"слабый":"ровно";
   return `<div class="${cls}"><b>${label}</b>${time}<br>${txt}</div>`;
 }
+// комбо по кнопкам: 1-е, 2-е, 3-е умение и ульт
+function comboBlock(id){
+  const c=COMBO[id]; if(!c) return "";
+  const row=(k,t)=>t?`<li><b>${k}:</b> ${esc(t)}</li>`:"";
+  return `<ul class="plain combo">${row("Комбо на линии",c.lane)}${row("Комбо в драке",c.fight)}${row("Лайфхак",c.hack)}</ul>`;
+}
 const pmLine=([v,t])=>`<li class="${v>=0?"up":"dn"}"><b>${sgn(v)}</b><span>${esc(t)}</span></li>`;
 function banButton(id){
   return `<button class="link" type="button" data-banpick="${id}">${esc(H[id][0])} в бане → показать следующего</button>`;
@@ -104,7 +110,7 @@ function planBlock(lane,c,e){
   return `<div class="mu"><h2 class="sp">План на матчап «${esc(H[c][0])} — ${esc(H[e][0])}»</h2><ul class="plain">
     ${row("Начало",(mu&&mu.e)||ph.early)}${row("Дальше",(mu&&mu.l)||ph.late)}${row("Не делай",mu&&mu.x)}
     ${mu?"":row("Против соперника",pv.vs)}${row("Докупи",buy)}</ul></div>
-    ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p></div>`:""}`;
+    ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p>${comboBlock(c)}</div>`:""}`;
 }
 function altsBlock(list,label,fmtv){
   return `<div><h2 class="sp">${label}</h2><div class="alts">${list.map((x,i)=>
@@ -178,7 +184,7 @@ function drawBlind(lane){
     <p class="why">${esc(why)}</p>
     <div><h2 class="sp">Из чего сложилась оценка</h2><ul class="pm">${lines.map(pmLine).join("")}</ul></div>
     ${banWarn(c)}${banButton(c)}
-    ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p></div>`:""}
+    ${pc.play?`<div><h2 class="sp">Как играть: ${esc(H[c][0])}</h2><p class="why">${esc(pc.play)}</p>${comboBlock(c)}</div>`:""}
     ${cnt.length?`<div><h2 class="sp">Кого опасаться на линии</h2><div class="rows">${cnt.map(y=>`<span class="pill bad">${esc(H[y][0])}<i>−${num(net(y,c))}</i></span>`).join("")}</div></div>`:""}
     ${altsBlock(r.slice(0,8),"Рейтинг для слепого пика",y=>sgn(y.sc))}
     ${buildBlock(c,lane)}
@@ -216,7 +222,7 @@ function drawRoam(){
     ${m?`<p class="why">${esc(m.when)}</p>`:`<p class="why">Все метовые роумеры в бане: это следующий по силе в патче.</p>`}
     <div><h2 class="sp">Почему он</h2><ul class="pm">${x.up.map(pmLine).join("")}</ul></div>
     ${banWarn(c)}${banButton(c)}
-    ${m?`<div><h2 class="sp">Как играть</h2><p class="why">${esc(m.play)}</p></div>`:""}
+    ${m?`<div><h2 class="sp">Как играть</h2><p class="why">${esc(m.play)}</p>${comboBlock(c)}</div>`:""}
     ${buildBlock(c,"roam")}
     <div><h2 class="sp">Метовые роумеры патча</h2><ul class="bans">${list}</ul></div>
     <p class="note">Порядок: половина разницы винрейта с 50% плюс бонусы за отмеченную ситуацию. Забаненный герой выпадает из рекомендации.</p>`;
