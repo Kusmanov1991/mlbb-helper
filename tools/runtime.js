@@ -4,7 +4,7 @@ const num=n=>n.toFixed(1).replace(".",",");
 const fmt=n=>"+"+num(n)+" п.п.";
 const sgn=n=>(n>=0?"+":"−")+num(Math.abs(n));
 const ico=en=>{const t=IT[en];return `<span class="ico ${t[2]}" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="${G[t[1]]}"/></svg></span>`;};
-const AB={popol:"ПК",luoyi:"ЛЙ",xborg:"ИБ",yuzhong:"ЮЧ",yisunshin:"ЛС",lapulapu:"ЛЛ",change:"ЧЭ",suyou:"СЁ"};
+const AB={popol:"ПК",luoyi:"ЛЙ",xborg:"ИБ",yisunshin:"ЛС",lapulapu:"ЛЛ",change:"ЧЭ",suyou:"СЁ"};
 const ava=(id,big)=>{const ru=H[id][0];let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))%360;
  return `<span class="ava${big?" big":""}" style="background:hsl(${h} 42% 38%)" aria-hidden="true">${AB[id]||ru.slice(0,2)}</span>`;};
 const LANE_NAME={gold:"Золото",mid:"Мид",roam:"Роум",exp:"Опыт",jungle:"Лес"};
@@ -31,7 +31,7 @@ function bannedLine(){
   if(!st.ban.size) return "";
   return `<div class="banline"><span>В бане: ${[...st.ban].map(id=>esc(H[id][0])).join(", ")}</span><button class="link" type="button" data-tab="bans">изменить</button></div>`;
 }
-const ALIAS={zetian:"Зетиан",luoyi:"Луо И",pharsa:"Фарса",zhuxin:"Чжу Синь",vale:"Вейл",aamon:"Аамон",bane:"Бейн",barats:"Баратс",baxia:"Баксия",change:"Чанъэ",dyrroth:"Дайрот Джавхед",jawhead:"Джавхед",kalea:"Калея",rafaela:"Рафаэла",silvanna:"Сильванна",suyou:"Суё Су Е",terizla:"Теризла",yisunshin:"И Сун-Син",yuzhong:"Ю Чжун Чонг",fredrinn:"Фредерин"};
+const ALIAS={zetian:"Зетиан",luoyi:"Луо И",pharsa:"Фарса",zhuxin:"Чжу Синь",vale:"Вейл",aamon:"Аамон",bane:"Бейн",barats:"Баратс",baxia:"Баксия",change:"Чанъэ",dyrroth:"Дайрот Джавхед",jawhead:"Джавхед",kalea:"Калея",rafaela:"Рафаэла",silvanna:"Сильванна",suyou:"Суё Су Е",terizla:"Теризла",yisunshin:"И Сун-Син",yuzhong:"Юй Чжун Ю Чжун",fredrinn:"Фредерин"};
 function matches(id,q){const [ru,en]=H[id];return ru.toLowerCase().includes(q)||en.toLowerCase().includes(q)||(ALIAS[id]||"").toLowerCase().includes(q);}
 function phaseBox(v,label,time){
   const cls=v>0?"hi":v<0?"lo":"";
